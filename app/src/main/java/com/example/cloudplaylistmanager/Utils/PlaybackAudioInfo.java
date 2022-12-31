@@ -1,8 +1,8 @@
-package com.example.cloudplaylistmanager;
+package com.example.cloudplaylistmanager.Utils;
 
 
 public class PlaybackAudioInfo {
-    enum PlaybackMediaType {
+    public enum PlaybackMediaType {
         LOCAL,
         STREAM,
         UNKNOWN

@@ -1,4 +1,4 @@
-package com.example.cloudplaylistmanager;
+package com.example.cloudplaylistmanager.Utils;
 
 import android.app.Service;
 import android.content.Context;
@@ -34,6 +34,7 @@ public class MusicService extends Service implements
 
     private ArrayList<PlaybackAudioInfo> playlist = null;
     private int[] shuffledPositions;
+    private boolean[] errorPreparingPositions;
     private int currentPlayPosition, songCounter;
     private boolean isShuffle, isRepeat = false;
     private boolean isPaused, isReduced = false; //Reduced when AudioManager invokes audio focus loss transient can duck
@@ -51,6 +52,7 @@ public class MusicService extends Service implements
         this.currentPlayPosition = 0;
         this.songCounter = 0;
         this.playlist = playlist;
+        this.errorPreparingPositions = new boolean[playlist.size()];
         GenerateShuffledList();
     }
 
@@ -244,7 +246,14 @@ public class MusicService extends Service implements
         } catch(Exception e) {
             e.printStackTrace();
             Log.e(this.getClass().getName(),(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
-            stopSelf();
+            //If there is an error preparing this media, skip it to the next one.
+            if(this.errorPreparingPositions[this.currentPlayPosition]) {
+                stopSelf();
+            }
+            else {
+                this.errorPreparingPositions[this.currentPlayPosition] = true;
+                NextSong(-1);
+            }
         }
     }
 
@@ -286,7 +295,7 @@ public class MusicService extends Service implements
     @Override
     public void onPrepared(MediaPlayer mP) {
         if(!mP.isPlaying()) {
-            Log.d("MusicPlayer","Prepared and Playing...");
+            Log.d("MusicPlayer","Playing.");
             mP.start();
         }
     }
@@ -294,9 +303,25 @@ public class MusicService extends Service implements
     @Override
     public boolean onError(MediaPlayer mP, int what, int extra) {
         if(what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
+            Log.e("MusicPlayer","Media Error - Server Died.");
             NewMediaPlayer();
         }
-        Log.d("MusicPlayer","Error Occurred.");
+        switch(extra) {
+            case MediaPlayer.MEDIA_ERROR_TIMED_OUT:
+                Log.e("MusicPlayer","Media Error - Timed out.");
+                break;
+            case MediaPlayer.MEDIA_ERROR_IO:
+                Log.e("MusicPlayer","Media Error - IO.");
+                break;
+            case MediaPlayer.MEDIA_ERROR_MALFORMED:
+                Log.e("MusicPlayer","Media Error - Malformed.");
+                break;
+            case MediaPlayer.MEDIA_ERROR_UNSUPPORTED:
+                Log.e("MusicPlayer","Media Error - Unsupported.");
+                break;
+            default:
+                Log.e("MusicPlayer", "Media Error - Unknown");
+        }
         return false;
     }
 

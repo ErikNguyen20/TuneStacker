@@ -32,8 +32,8 @@ public class RegisterActivity extends AppCompatActivity {
         if(email.isEmpty() || password.isEmpty()) {
             Toast.makeText(this,"Fields cannot be empty.",Toast.LENGTH_SHORT).show();
         }
-        else if(password.length() < 4) {
-            Toast.makeText(this,"Password Length is too short.",Toast.LENGTH_SHORT).show();
+        else if(password.length() < 6) {
+            Toast.makeText(this,"Password Length must be at least 6 characters long.",Toast.LENGTH_SHORT).show();
         }
         else if(this.authentication != null) {
             this.authentication.createUserWithEmailAndPassword(email, password).addOnCompleteListener(RegisterActivity.this, task -> {

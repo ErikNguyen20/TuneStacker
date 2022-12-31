@@ -10,6 +10,8 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.example.cloudplaylistmanager.Utils.MusicService;
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -30,7 +32,7 @@ public class MainActivity extends AppCompatActivity {
             MusicService.MusicServiceBinder binder = (MusicService.MusicServiceBinder) iBinder;
             musicService = binder.getBinder();
 
-            //testPlayer();
+            testPlayer();
         }
 
         @Override
@@ -46,10 +48,6 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         this.authentication = FirebaseAuth.getInstance();
-        if(this.authentication.getCurrentUser() != null) {
-            //Take user to the landing page.
-            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
-        }
 
         Intent serviceIntent = new Intent(this, MusicService.class);
         bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
@@ -59,6 +57,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        if(this.authentication.getCurrentUser() != null) {
+            //Take user to the landing page.
+            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
+        }
 
         //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
     }
