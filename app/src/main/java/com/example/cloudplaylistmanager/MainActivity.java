@@ -10,9 +10,13 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.google.firebase.auth.FirebaseAuth;
+
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
+
+    FirebaseAuth authentication = null;
 
     private ArrayList<PlaybackAudioInfo> playlist;
     String source = "https://c166.pcloud.com/dpZXgjHqwZpDP9P3Z7COf7ZZJxQOc7ZlXZZWKVZZsq811h9pXE7vR3KqqU4K9VE7k3KX/Kimino%20Shiranai%20Monogatari.mp3";
@@ -26,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
             MusicService.MusicServiceBinder binder = (MusicService.MusicServiceBinder) iBinder;
             musicService = binder.getBinder();
 
-            testPlayer();
+            //testPlayer();
         }
 
         @Override
@@ -41,6 +45,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        this.authentication = FirebaseAuth.getInstance();
+        if(this.authentication.getCurrentUser() != null) {
+            //Take user to the landing page.
+            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
+        }
+
         Intent serviceIntent = new Intent(this, MusicService.class);
         bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
     }
@@ -48,9 +58,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        //Intent serviceIntent = new Intent(this, MusicService.class);
-        //Log.d("MusicService","Binding Service...");
-        //bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
+
+
+        //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
     }
 
     @Override

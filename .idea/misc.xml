@@ -3,7 +3,9 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_login.xml" value="0.1" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_main.xml" value="0.1743659420289855" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_register.xml" value="0.16770833333333332" />
       </map>
     </option>
   </component>
