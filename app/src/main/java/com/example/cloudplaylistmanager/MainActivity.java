@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.MusicService;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.google.firebase.auth.FirebaseAuth;
@@ -32,7 +33,7 @@ public class MainActivity extends AppCompatActivity {
             MusicService.MusicServiceBinder binder = (MusicService.MusicServiceBinder) iBinder;
             musicService = binder.getBinder();
 
-            testPlayer();
+            //testPlayer();
         }
 
         @Override
@@ -63,6 +64,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
+
+        DataManager manager = new DataManager(this);
+        manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
 
     @Override

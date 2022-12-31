@@ -29,7 +29,7 @@ public class LoginActivity extends AppCompatActivity {
 
     public void Login(String email, String password) {
         if(email.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this,"Fields cannot be empty.",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Field(s) cannot be empty.",Toast.LENGTH_SHORT).show();
         }
         else {
             this.authentication.signInWithEmailAndPassword(email, password).addOnCompleteListener(LoginActivity.this, task -> {

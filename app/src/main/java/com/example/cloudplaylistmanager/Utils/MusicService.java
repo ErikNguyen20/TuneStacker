@@ -216,7 +216,7 @@ public class MusicService extends Service implements
             }
         }
         else {
-            this.currentPlayPosition = overridePosition;
+            this.currentPlayPosition = overridePosition % this.playlist.size();
         }
 
         //Selects the audio from the playlist.
