@@ -12,18 +12,25 @@ public class PlaybackAudioInfo {
     private String author;
     private int duration;
     private PlaybackMediaType type;
+    private PlaybackMediaType thumbnailType;
     private String source; /** Path or URL depending on PlaybackMediaType */
+    private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
+    private boolean isPrivate;
 
-    public PlaybackAudioInfo(String title, String author, int duration, String source, PlaybackMediaType type) {
+    public PlaybackAudioInfo() {
+        this.isPrivate = false;
+    }
+
+    public PlaybackAudioInfo(String title, String author, String source, PlaybackMediaType type) {
         this.title = title;
         this.author = author;
-        this.duration = duration;
         this.source = source;
         this.type = type;
+        this.isPrivate = false;
     }
 
     public String getTitle() {
-        return title;
+        return this.title;
     }
 
     public void setTitle(String title) {
@@ -31,7 +38,7 @@ public class PlaybackAudioInfo {
     }
 
     public String getAuthor() {
-        return author;
+        return this.author;
     }
 
     public void setAuthor(String author) {
@@ -39,7 +46,7 @@ public class PlaybackAudioInfo {
     }
 
     public int getDuration() {
-        return duration;
+        return this.duration;
     }
 
     public void setDuration(int duration) {
@@ -47,7 +54,7 @@ public class PlaybackAudioInfo {
     }
 
     public PlaybackMediaType getType() {
-        return type;
+        return this.type;
     }
 
     public void setType(PlaybackMediaType type) {
@@ -55,10 +62,34 @@ public class PlaybackAudioInfo {
     }
 
     public String getSource() {
-        return source;
+        return this.source;
     }
 
     public void setSource(String source) {
         this.source = source;
+    }
+
+    public String getThumbnailSource() {
+        return this.thumbnailSource;
+    }
+
+    public void setThumbnailSource(String thumbnailSource) {
+        this.thumbnailSource = thumbnailSource;
+    }
+
+    public PlaybackMediaType getThumbnailType() {
+        return this.thumbnailType;
+    }
+
+    public void setThumbnailType(PlaybackMediaType thumbnailType) {
+        this.thumbnailType = thumbnailType;
+    }
+
+    public boolean getIsPrivate() {
+        return this.isPrivate;
+    }
+
+    public void setIsPrivate(boolean isPrivate) {
+        this.isPrivate = isPrivate;
     }
 }

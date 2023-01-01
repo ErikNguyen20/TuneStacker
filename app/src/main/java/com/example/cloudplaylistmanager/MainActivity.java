@@ -81,7 +81,8 @@ public class MainActivity extends AppCompatActivity {
         if(!manager.CheckPermission()) {
             //RequestPermission();
         }
-        manager.getaudiourl("https://www.youtube.com/watch?v=mn-wr_nCTEA");
+        manager.testSearch();
+        //manager.getaudiourl("https://www.youtube.com/watch?v=mn-wr_nCTEA");
         //manager.getaudiourl("https://www.youtube.com/watch?v=5QdthXZCgEA");
         //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
@@ -154,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void testPlayer() {
         playlist = new ArrayList<>(2);
-        PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari","unknown",100000,source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
+        PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari","unknown",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         //PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         playlist.add(item);
         //playlist.add(item2);

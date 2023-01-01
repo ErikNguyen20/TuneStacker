@@ -3,7 +3,6 @@ package com.example.cloudplaylistmanager.Utils;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.Log;
-import android.util.SparseArray;
 
 import androidx.annotation.Nullable;
 
@@ -15,20 +14,11 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import at.huber.youtubeExtractor.VideoMeta;
-import at.huber.youtubeExtractor.YouTubeExtractor;
-import at.huber.youtubeExtractor.YtFile;
 
 interface FetchPlaylistListener{
     void onComplete(YoutubeUtilities.YtPlaylistInfo fetchedPlaylist);
     void onError(String message);
 }
-
-interface ExtractUrlListener{
-    void onComplete(String url);
-    void onError(String message);
-}
-
 
 public class YoutubeUtilities {
     private static final String LOG_TAG = "YoutubeUtilities";
@@ -37,38 +27,13 @@ public class YoutubeUtilities {
 
     private static final String VID_EXTRACT_PATTERN = "/^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*/";
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
-    public static int VIDEO_MP4_720_ITAG = 22;
-    public static int AUDIO_M4A_128k_ITAG = 140;
 
     private Context context;
     public FetchPlaylistListener playlistListener;
-    public ExtractUrlListener extractUrlListener;
 
 
     public YoutubeUtilities(Context context) {
         this.context = context;
-    }
-
-    /**
-     * Extracts the download url from a Youtube Video Url.
-     * It is required to implement {@link ExtractUrlListener} to obtain the
-     * result of this call and to catch potential errors.
-     * @param url Url of the Youtube Video.
-     */
-    @SuppressLint("StaticFieldLeak")
-    public void ExtractUrlFromVideoUrl(String url, int itag) {
-        new YouTubeExtractor(this.context) {
-            @Override
-            protected void onExtractionComplete(@Nullable SparseArray<YtFile> ytFiles, @Nullable VideoMeta videoMeta) {
-                if(ytFiles != null) {
-                    String downloadLink = ytFiles.get(itag).getUrl();
-                    extractUrlListener.onComplete(downloadLink);
-                }
-                else {
-                    extractUrlListener.onError("Failed to Download.");
-                }
-            }
-        }.extract(url);
     }
 
     /**
@@ -174,25 +139,25 @@ public class YoutubeUtilities {
 
             JSONArray items = result.getJSONArray("items");
             for (int index = 0; index < items.length(); index++) {
-                YtVideoInfo video = new YtVideoInfo();
+                PlaybackAudioInfo video = new PlaybackAudioInfo();
 
                 JSONObject item = items.getJSONObject(index).getJSONObject("snippet");
                 if(item.has("title")) {
-                    video.title = item.getString("title");
-                }
-                if(item.has("description")) {
-                    video.description = item.getString("description");
+                    video.setTitle(item.getString("title"));
                 }
                 if(item.getJSONObject("thumbnails").has("default")) {
-                    video.thumbnail = item.getJSONObject("thumbnails").getJSONObject("default").getString("url");
+                    video.setThumbnailSource(item.getJSONObject("thumbnails").getJSONObject("default").getString("url"));
+                    video.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
                 }
                 if(item.has("videoOwnerChannelTitle")) {
-                    video.creator = item.getString("videoOwnerChannelTitle");
+                    video.setAuthor(item.getString("videoOwnerChannelTitle"));
                 }
                 else {
-                    video.isPrivate = true;
+                    video.setIsPrivate(true);
                 }
-                video.videoId = item.getJSONObject("resourceId").getString("videoId");
+
+                video.setSource("https://www.youtube.com/watch?v=" + item.getJSONObject("resourceId").getString("videoId"));
+                video.setType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
                 playlistResult.AddVideoToPlaylist(video);
             }
@@ -209,7 +174,7 @@ public class YoutubeUtilities {
     public class YtPlaylistInfo {
         private String nextPageToken;
         private int totalResults;
-        private ArrayList<YtVideoInfo> videos;
+        private ArrayList<PlaybackAudioInfo> videos;
 
         public YtPlaylistInfo() {
             this.videos = new ArrayList<>();
@@ -232,11 +197,11 @@ public class YoutubeUtilities {
             return this.totalResults;
         }
 
-        public ArrayList<YtVideoInfo> getVideos() {
+        public ArrayList<PlaybackAudioInfo> getVideos() {
             return this.videos;
         }
 
-        public void AddVideoToPlaylist(YtVideoInfo video) {
+        public void AddVideoToPlaylist(PlaybackAudioInfo video) {
             this.videos.add(video);
         }
 
@@ -245,15 +210,4 @@ public class YoutubeUtilities {
             this.nextPageToken = other.nextPageToken;
         }
     }
-
-
-    public class YtVideoInfo {
-        public String title = "Unknown";
-        public String creator = "Unknown";
-        public String description = "";
-        public String thumbnail = null;
-        public String videoId = null;
-        public boolean isPrivate = false;
-    }
-
 }
