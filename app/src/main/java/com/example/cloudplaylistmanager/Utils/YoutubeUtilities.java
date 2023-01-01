@@ -1,6 +1,11 @@
 package com.example.cloudplaylistmanager.Utils;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
 import android.util.Log;
+import android.util.SparseArray;
+
+import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -10,19 +15,61 @@ import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import at.huber.youtubeExtractor.VideoMeta;
+import at.huber.youtubeExtractor.YouTubeExtractor;
+import at.huber.youtubeExtractor.YtFile;
+
 interface FetchPlaylistListener{
     void onComplete(YoutubeUtilities.YtPlaylistInfo fetchedPlaylist);
     void onError(String message);
 }
 
+interface ExtractUrlListener{
+    void onComplete(String url);
+    void onError(String message);
+}
+
+
 public class YoutubeUtilities {
+    private static final String LOG_TAG = "YoutubeUtilities";
     private static final String API_KEY = "AIzaSyDRtock8Du8PQSV4h0oVYMJHvwsI233TJg"; //Comes from "https://console.cloud.google.com/"
+    private static final int MAX_RESULTS = 50;
 
     private static final String VID_EXTRACT_PATTERN = "/^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*/";
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
+    public static int VIDEO_MP4_720_ITAG = 22;
+    public static int AUDIO_M4A_128k_ITAG = 140;
 
+    private Context context;
     public FetchPlaylistListener playlistListener;
+    public ExtractUrlListener extractUrlListener;
 
+
+    public YoutubeUtilities(Context context) {
+        this.context = context;
+    }
+
+    /**
+     * Extracts the download url from a Youtube Video Url.
+     * It is required to implement {@link ExtractUrlListener} to obtain the
+     * result of this call and to catch potential errors.
+     * @param url Url of the Youtube Video.
+     */
+    @SuppressLint("StaticFieldLeak")
+    public void ExtractUrlFromVideoUrl(String url, int itag) {
+        new YouTubeExtractor(this.context) {
+            @Override
+            protected void onExtractionComplete(@Nullable SparseArray<YtFile> ytFiles, @Nullable VideoMeta videoMeta) {
+                if(ytFiles != null) {
+                    String downloadLink = ytFiles.get(itag).getUrl();
+                    extractUrlListener.onComplete(downloadLink);
+                }
+                else {
+                    extractUrlListener.onError("Failed to Download.");
+                }
+            }
+        }.extract(url);
+    }
 
     /**
      * Fetches all videos in a youtube playlist with a given playlist url.
@@ -37,12 +84,14 @@ public class YoutubeUtilities {
                 this.playlistListener.onError("Invalid Playlist URL.");
             }
 
+            //Initializes Query Parameters for the HTTP Get Request.
             HashMap<String,String> params = new HashMap<>();
             params.put("part", "snippet");
-            params.put("maxResults", "50");
+            params.put("maxResults", String.valueOf(MAX_RESULTS));
             params.put("playlistId", extractedPlaylistID);
             params.put("key",API_KEY);
 
+            //Makes the Get Request and parses results into a YtPlaylistInfo object.
             JSONObject result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlistItems",params);
             if(result == null) {
                 this.playlistListener.onError("Initial Get Request from the API failed.");
@@ -54,8 +103,9 @@ public class YoutubeUtilities {
                 return;
             }
 
+            //If the playlist is larger than the max results, fetch the next list using the next page token.
             int maxSongCount = playlistInfo.getTotalResults();
-            int numSongs = 50;
+            int numSongs = MAX_RESULTS;
             while (numSongs < maxSongCount) {
                 params.put("pageToken",playlistInfo.getNextPageToken());
                 result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlistItems",params);
@@ -69,7 +119,7 @@ public class YoutubeUtilities {
                     return;
                 }
                 playlistInfo.MergePlaylists(nextPlaylistInfo);
-                numSongs += 50;
+                numSongs += MAX_RESULTS;
             }
 
             this.playlistListener.onComplete(playlistInfo);
@@ -84,7 +134,7 @@ public class YoutubeUtilities {
      */
     public static String ExtractVideoIdFromUrl(String url) {
         Matcher match = Pattern.compile(VID_EXTRACT_PATTERN).matcher(url);
-        if(match.find() && match.group(7).length() == 11) {
+        if(match.find() && match.group(7) != null && match.group(7).length() == 11) {
             return match.group(7);
         }
         else {
@@ -127,15 +177,20 @@ public class YoutubeUtilities {
                 YtVideoInfo video = new YtVideoInfo();
 
                 JSONObject item = items.getJSONObject(index).getJSONObject("snippet");
-                video.title = item.getString("title");
-                video.description = item.getString("description");
+                if(item.has("title")) {
+                    video.title = item.getString("title");
+                }
+                if(item.has("description")) {
+                    video.description = item.getString("description");
+                }
                 if(item.getJSONObject("thumbnails").has("default")) {
                     video.thumbnail = item.getJSONObject("thumbnails").getJSONObject("default").getString("url");
-                } else {
-                    video.isPrivate = true;
                 }
                 if(item.has("videoOwnerChannelTitle")) {
                     video.creator = item.getString("videoOwnerChannelTitle");
+                }
+                else {
+                    video.isPrivate = true;
                 }
                 video.videoId = item.getJSONObject("resourceId").getString("videoId");
 
@@ -143,11 +198,12 @@ public class YoutubeUtilities {
             }
             return playlistResult;
         } catch(Exception e) {
-            Log.e(this.getClass().getName(),(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
+            Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
             return null;
         }
     }
+
 
 
     public class YtPlaylistInfo {
@@ -189,6 +245,7 @@ public class YoutubeUtilities {
             this.nextPageToken = other.nextPageToken;
         }
     }
+
 
     public class YtVideoInfo {
         public String title = "Unknown";

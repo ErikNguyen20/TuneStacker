@@ -1,13 +1,23 @@
 package com.example.cloudplaylistmanager;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 
+import android.Manifest;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.IBinder;
+import android.provider.Settings;
 import android.util.Log;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
@@ -18,11 +28,12 @@ import com.google.firebase.auth.FirebaseAuth;
 import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
+    private static final int STORAGE_PERMISSION_CODE = 100;
 
     FirebaseAuth authentication = null;
 
     private ArrayList<PlaybackAudioInfo> playlist;
-    String source = "https://c166.pcloud.com/dpZXgjHqwZpDP9P3Z7COf7ZZJxQOc7ZlXZZWKVZZsq811h9pXE7vR3KqqU4K9VE7k3KX/Kimino%20Shiranai%20Monogatari.mp3";
+    String source = "https://c131.pcloud.com/cBZj91AXKZqN9qzGZ7COf7ZZRxKOc7ZlXZZWKVZRZthQYZhLZtVZrpZjLZQ5ZqkZUzZfRZQFZpkZSVZzXZVpZApZpXZ70Ffzwi87SLAnkcdzXUrmHpjGfk7/whitepromise.m4a";
     String source2 = "https://c402.pcloud.com/dpZeUWHqwZr0Dtg3Z7COf7ZZE9mOc7ZlXZZWKVZZm51CA2v5CpQ7F43D7Jnc0RxcDqfX/Kannagi%20Opening%20Lyrics%20%28KanjiRomanjiT%C3%BCrk%C3%A7e%29.mp3";
 
     MusicService musicService = null;
@@ -65,8 +76,14 @@ public class MainActivity extends AppCompatActivity {
 
         //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
 
-        DataManager manager = new DataManager(this);
-        manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
+        DataManager.Initialize(this);
+        DataManager manager = DataManager.getInstance();
+        if(!manager.CheckPermission()) {
+            //RequestPermission();
+        }
+        manager.getaudiourl("https://www.youtube.com/watch?v=mn-wr_nCTEA");
+        //manager.getaudiourl("https://www.youtube.com/watch?v=5QdthXZCgEA");
+        //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
 
     @Override
@@ -79,12 +96,68 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    /**
+     * Requests read/write permissions from the user.
+     */
+    private void RequestPermission() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try{
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                Uri uri = Uri.fromParts("package", this.getPackageName(), null);
+                intent.setData(uri);
+                storageActivityResultLauncher.launch(intent);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                Intent intent = new Intent();
+                intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                storageActivityResultLauncher.launch(intent);
+            }
+        }
+        else {
+            ActivityCompat.requestPermissions(this, new String[]{
+                            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                            Manifest.permission.READ_EXTERNAL_STORAGE},
+                    STORAGE_PERMISSION_CODE);
+        }
+    }
+
+    private final ActivityResultLauncher<Intent> storageActivityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if(Environment.isExternalStorageManager()) {
+                        Log.d("Permissions", "Storage Permission Granted");
+                    }
+                    else {
+                        Log.d("Permissions", "Storage Permission Denied");
+                    }
+                }
+            });
+
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if(requestCode == STORAGE_PERMISSION_CODE) {
+            if(grantResults.length > 0) {
+                if(grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d("Permissions", "Storage Permission Granted");
+                }
+                else {
+                    Log.d("Permissions", "Storage Permission Denied");
+                }
+            }
+        }
+    }
+
     public void testPlayer() {
         playlist = new ArrayList<>(2);
         PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari","unknown",100000,source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
-        PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
+        //PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         playlist.add(item);
-        playlist.add(item2);
+        //playlist.add(item2);
 
         Log.d("MusicPlayer","Initializing...");
         musicService.InitializePlayer(playlist);
