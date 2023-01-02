@@ -231,12 +231,12 @@ public class MusicService extends Service implements
         Log.d("MusicPlayer","Selected Song - " + audio.getTitle());
         //Sets the datasource and prepares the audio based on the type.
         try{
-            switch(audio.getType()) {
+            switch(audio.getAudioType()) {
                 case STREAM:
-                    this.mediaPlayer.setDataSource(audio.getSource());
+                    this.mediaPlayer.setDataSource(audio.getAudioSource());
                     break;
                 case LOCAL:
-                    this.mediaPlayer.setDataSource(this, Uri.parse(audio.getSource()));
+                    this.mediaPlayer.setDataSource(this, Uri.parse(audio.getAudioSource()));
                     break;
                 case UNKNOWN:
                     throw new Exception("Unknown Media Source");

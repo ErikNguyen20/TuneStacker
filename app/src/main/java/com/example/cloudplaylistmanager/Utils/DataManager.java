@@ -1,13 +1,8 @@
 package com.example.cloudplaylistmanager.Utils;
 
-import android.Manifest;
 import android.content.Context;
-import android.content.pm.PackageManager;
-import android.os.Build;
-import android.os.Environment;
+import android.net.Uri;
 import android.util.Log;
-
-import androidx.core.content.ContextCompat;
 
 import com.androidnetworking.AndroidNetworking;
 import com.androidnetworking.common.ANRequest;
@@ -16,6 +11,10 @@ import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
 import com.androidnetworking.interfaces.DownloadListener;
 import com.androidnetworking.interfaces.StringRequestListener;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageMetadata;
+import com.google.firebase.storage.StorageReference;
 import com.yausername.ffmpeg.FFmpeg;
 import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLException;
@@ -36,26 +35,37 @@ import java.util.Map;
 interface DownloadFromUrlListener{
     void onComplete(PlaybackAudioInfo audio);
     void onProgressUpdate(float progress, long etaSeconds);
-    void onError(String error);
+    void onError(int attempt, String error);
+}
+interface UploadSongToFirebaseListener{
+    void onComplete();
+    void onError();
 }
 
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
-    private static final String PUBLIC_DIRECTORY_NAME = "downloaded-songs";
+    private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
+    private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
+    private static final String LOCAL_DIRECTORY_CACHE = "cache";
+    private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 8;
+    private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 4;
+
 
     private static DataManager instance = null;
-    public DownloadFromUrlListener downloadFromUrlListener;
-    private boolean downloaderInitialized = false;
-    private Context context;
+    private boolean downloaderInitialized;
     private YoutubeUtilities YtUtilities;
+    private File appMusicDirectory;
+    private File appCacheDirectory;
+
 
     private DataManager(Context context) {
-        this.context = context;
         this.YtUtilities = new YoutubeUtilities(context);
         AndroidNetworking.initialize(context);
         try {
             YoutubeDL.getInstance().init(context);
             FFmpeg.getInstance().init(context);
+            this.appMusicDirectory = GetLocalMusicDirectory(context);
+            this.appCacheDirectory = GetLocalCacheDirectory(context);
             this.downloaderInitialized = true;
         } catch(YoutubeDLException e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
@@ -83,71 +93,126 @@ public class DataManager {
         return instance;
     }
 
+    public void InitializeUserData() {
+        FirebaseAuth authentication = FirebaseAuth.getInstance();
+        if(authentication.getCurrentUser() != null) {
+            String userId = authentication.getCurrentUser().getUid();
+        }
+
+    }
+
+    public void UploadAudioToFirebase(PlaybackAudioInfo audio, StorageReference fileReference) {
+        //FirebaseStorage.getInstance().getReference().child("audio").child("TBUploaded File name here");
+        if(audio.getAudioType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
+            //Download it, then: audio.setAudioSource(filepath);
+        }
+        Uri audioUri = Uri.parse(audio.getAudioSource());
+        Uri imgUri = Uri.parse(audio.getThumbnailSource());
+
+        if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.STREAM) {
+            //Simply store it in the metadata.
+        }
+        else {
+
+        }
+
+        //String filename = uri.getLastPathSegment();
+        //fileReference.putFile(uri);
+    }
+
     /**
      * Downloads song with the given, valid URL into the MUSIC directory.
      * It is required to implement {@link DownloadFromUrlListener} to obtain the
      * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
      * @param url Url of the Audio source.
+     * @param downloadFromUrlListener Listener used to get the results/errors of this call.
      */
-    public void DownloadSongToDirectoryFromUrl(String url) {
+    public void DownloadSongToDirectoryFromUrl(String url, DownloadFromUrlListener downloadFromUrlListener) {
         if(!this.downloaderInitialized) {
-            this.downloadFromUrlListener.onError("Downloader failed to initialize on startup, thus it is in a failed state.");
+            downloadFromUrlListener.onError(-1,"Downloader failed to initialize on startup, thus it is in a failed state.");
             return;
         }
         Thread thread = new Thread(() -> {
-            File appPublicMusicDirectory = GetMusicDirectory();
-
             //Preforms a download operation.
-            YoutubeDLRequest request = new YoutubeDLRequest(url);
-            request.addOption("-x");
-            request.addOption("--no-playlist");
-            request.addOption("--retries",10);
-            request.addOption("--convert-thumbnails","jpg");
-            request.addOption("--embed-thumbnail");
-            request.addOption("--audio-format", "opus");
-            request.addOption("--audio-quality", 5);
-            request.addOption("-o", appPublicMusicDirectory.getAbsolutePath() + "/%(title)s.%(ext)s");
+            YoutubeDLRequest request = null;
             String responseString = null;
-            try {
-                YoutubeDLResponse response = YoutubeDL.getInstance().execute(request, (float progress, long etaSeconds, String line) -> {
-                    this.downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
-                });
-                responseString = response.getOut();
-            } catch (YoutubeDLException | InterruptedException e) {
-                Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
-                e.printStackTrace();
-                this.downloadFromUrlListener.onError("Failed to Download from the given URL.");
-                //We will retry download
+
+            int downloadAttemptNumber = 1;
+            boolean success = false;
+            while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !success) {
+                request = new YoutubeDLRequest(url);
+                request.addOption("-x");
+                request.addOption("--no-playlist");
+                request.addOption("--retries",10);
+                request.addOption("--no-check-certificate");
+                request.addOption("--no-mtime");
+                request.addOption("--audio-format", "opus");
+                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + "/%(title)s.%(ext)s");
+                try {
+                    YoutubeDLResponse response = YoutubeDL.getInstance().execute(request, (float progress, long etaSeconds, String line) -> {
+                        downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
+                    });
+                    responseString = response.getOut();
+                    if(responseString.contains("ERROR:") && response.getErr() != null && !response.getErr().isEmpty()) {
+                        throw new YoutubeDLException(responseString);
+                    }
+                    success = true;
+                } catch (YoutubeDLException | InterruptedException e) {
+                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
+                    e.printStackTrace();
+                    downloadFromUrlListener.onError(downloadAttemptNumber,"Failed to Download from the given URL.");
+
+                    //We will retry download
+                    downloadAttemptNumber++;
+                }
+            }
+            if(!success) {
+                downloadFromUrlListener.onError(-1,"Download Attempts exceeded threshold.");
                 return;
             }
 
             //Fetches audio information from the source.
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
-            try {
-                VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
-                audio.setTitle(streamInfo.getTitle());
-                audio.setAuthor(streamInfo.getUploader());
-                audio.setThumbnailSource(streamInfo.getThumbnail());
-                audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
-                audio.setSource(appPublicMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
-                audio.setType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
-            } catch (YoutubeDLException | InterruptedException e) {
-                Log.e("Test",e.getMessage());
-                e.printStackTrace();
-                this.downloadFromUrlListener.onError("Failed to Fetch Video Information.");
-            }
+            int videoInfoFetchAttemptNumber = 1;
+            success = false;
+            while(videoInfoFetchAttemptNumber <= MAX_FETCH_AUDIO_INFO_RETRIES && !success) {
+                try {
+                    VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
+                    audio.setTitle(streamInfo.getTitle());
+                    audio.setAuthor(streamInfo.getUploader());
+                    audio.setThumbnailSource(streamInfo.getThumbnail());
+                    audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
-            if(audio.getTitle() == null || audio.getTitle().isEmpty()) {
+                    if(streamInfo.getTitle().contains("ERROR:")) {
+                        throw new YoutubeDLException(streamInfo.getTitle());
+                    }
+                    success = true;
+                } catch (YoutubeDLException | InterruptedException e) {
+                    Log.e("Test",e.getMessage());
+                    e.printStackTrace();
+                    downloadFromUrlListener.onError(videoInfoFetchAttemptNumber,"Failed to Fetch Video Information.");
+                    audio.setTitle(null);
+
+                    //We will retry Fetch
+                    videoInfoFetchAttemptNumber++;
+                }
+            }
+            //Sets default audio parameters.
+            if(!success) {
                 audio = new PlaybackAudioInfo();
-
-                String sourcePath = responseString.substring(responseString.indexOf("[ExtractAudio]")+28,responseString.indexOf(".opus")+5);
-                audio.setTitle(sourcePath.substring(appPublicMusicDirectory.getAbsolutePath().length(),sourcePath.length()-5));
+                int startIndex = responseString.indexOf("[ExtractAudio]");
+                int endIndex = responseString.indexOf(".opus");
+                if(startIndex == -1 || endIndex == -1) {
+                    String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
+                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length(),sourcePath.length()-5));
+                }
             }
 
-            audio.setSource(appPublicMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
-            audio.setType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
+            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
 
-            this.downloadFromUrlListener.onComplete(audio);
+            downloadFromUrlListener.onComplete(audio);
         });
 
         thread.start();
@@ -156,7 +221,7 @@ public class DataManager {
     /**
      * Downloads file with given url to local storage.
      * @param link Link to json on web.
-     * @param directory External Storage directory.
+     * @param directory Working directory.
      * @param filename Name of the File + Extension ex: "accounts.json"
      */
     public void DownloadToLocalStorageAsync(String link, String directory, String filename) {
@@ -233,7 +298,7 @@ public class DataManager {
     }
 
     public void SyncPlaylist(String url) {
-        this.YtUtilities.playlistListener = new FetchPlaylistListener() {
+        this.YtUtilities.FetchPlaylistItems(url, new FetchPlaylistListener() {
             @Override
             public void onComplete(YoutubeUtilities.YtPlaylistInfo fetchedPlaylist) {
                 Log.d("DataManager","Playlist Length: " + fetchedPlaylist.getVideos().size());
@@ -243,20 +308,19 @@ public class DataManager {
             public void onError(String message) {
                 Log.e("DataManager",message);
             }
-        };
-
-        this.YtUtilities.FetchPlaylistItems(url);
+        });
     }
 
 
     /**
      * Converts an audio title into a hash. Uses SHA-256
      * @param title String title of the audio.
+     * @return Hashed string.
      */
     public String AudioTitleToHash(String title) {
         try {
             String chunk = title.split("[.]")[0];
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");;
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(chunk.getBytes(StandardCharsets.UTF_8));
             BigInteger bi = new BigInteger(1, hash);
             return String.format("%0" + (hash.length << 1) + "x", bi);
@@ -269,29 +333,29 @@ public class DataManager {
 
     /**
      * Gets the Music Directory on the application.
-     * Assumes that
+     * Assumes that permissions have been granted to read/write in the external storage.
+     * @param context Context of the application.
+     * @return File directory path.
      */
-    public File GetMusicDirectory() {
-        File musicDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
-        File appPublicMusicDirectory = new File(musicDirectory, PUBLIC_DIRECTORY_NAME);
-        if (!appPublicMusicDirectory.exists()) {
-            appPublicMusicDirectory.mkdir();
+    public File GetLocalMusicDirectory(Context context) {
+        File appMusicDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_AUDIO_STORAGE);
+        if (!appMusicDirectory.exists()) {
+            appMusicDirectory.mkdir();
         }
-        return appPublicMusicDirectory;
+        return appMusicDirectory;
     }
 
     /**
-     * Checks to see if the user has granted read/write permissions to the app.
+     * Gets the Cache Directory on the application.
+     * Assumes that permissions have been granted to read/write in the external storage.
+     * @param context Context of the application.
+     * @return File directory path.
      */
-    public boolean CheckPermission() {
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            return Environment.isExternalStorageManager();
+    public File GetLocalCacheDirectory(Context context) {
+        File appCacheDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_CACHE);
+        if (!appCacheDirectory.exists()) {
+            appCacheDirectory.mkdir();
         }
-        else {
-            int write = ContextCompat.checkSelfPermission(this.context, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-            int read = ContextCompat.checkSelfPermission(this.context, Manifest.permission.READ_EXTERNAL_STORAGE);
-
-            return write == PackageManager.PERMISSION_GRANTED && read == PackageManager.PERMISSION_GRANTED;
-        }
+        return appCacheDirectory;
     }
 }

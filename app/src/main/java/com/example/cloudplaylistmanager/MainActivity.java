@@ -5,6 +5,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.Manifest;
 import android.content.ComponentName;
@@ -78,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
 
         DataManager.Initialize(this);
         DataManager manager = DataManager.getInstance();
-        if(!manager.CheckPermission()) {
+        if(!CheckPermission()) {
             //RequestPermission();
         }
         manager.testSearch();
@@ -97,6 +98,21 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    /**
+     * Checks to see if the user has granted read/write permissions to the app.
+     */
+    public boolean CheckPermission() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        else {
+            int write = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+            int read = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE);
+
+            return write == PackageManager.PERMISSION_GRANTED && read == PackageManager.PERMISSION_GRANTED;
+        }
+    }
 
     /**
      * Requests read/write permissions from the user.

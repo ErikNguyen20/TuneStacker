@@ -1,10 +1,8 @@
 package com.example.cloudplaylistmanager.Utils;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.util.Log;
 
-import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -27,9 +25,9 @@ public class YoutubeUtilities {
 
     private static final String VID_EXTRACT_PATTERN = "/^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*/";
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
+    public static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
 
     private Context context;
-    public FetchPlaylistListener playlistListener;
 
 
     public YoutubeUtilities(Context context) {
@@ -41,12 +39,13 @@ public class YoutubeUtilities {
      * It is required to implement {@link FetchPlaylistListener} to obtain the
      * result of this call and to catch potential errors.
      * @param url Url of the Youtube Playlist
+     * @param playlistListener Listener used to get the results/errors of this call.
      */
-    public void FetchPlaylistItems(String url) {
+    public void FetchPlaylistItems(String url, FetchPlaylistListener playlistListener) {
         Thread thread = new Thread(() -> {
             String extractedPlaylistID = ExtractPlaylistIdFromUrl(url);
             if(extractedPlaylistID == null) {
-                this.playlistListener.onError("Invalid Playlist URL.");
+                playlistListener.onError("Invalid Playlist URL.");
             }
 
             //Initializes Query Parameters for the HTTP Get Request.
@@ -59,12 +58,12 @@ public class YoutubeUtilities {
             //Makes the Get Request and parses results into a YtPlaylistInfo object.
             JSONObject result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlistItems",params);
             if(result == null) {
-                this.playlistListener.onError("Initial Get Request from the API failed.");
+                playlistListener.onError("Initial Get Request from the API failed.");
                 return;
             }
             YtPlaylistInfo playlistInfo = ParsePlaylistJsonResult(result);
             if(playlistInfo == null) {
-                this.playlistListener.onError("An Error occurred when parsing the Initial Get Request");
+                playlistListener.onError("An Error occurred when parsing the Initial Get Request");
                 return;
             }
 
@@ -75,19 +74,19 @@ public class YoutubeUtilities {
                 params.put("pageToken",playlistInfo.getNextPageToken());
                 result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlistItems",params);
                 if(result == null) {
-                    this.playlistListener.onError("Subsequent Get Requests from the API failed.");
+                    playlistListener.onError("Subsequent Get Requests from the API failed.");
                     return;
                 }
                 YtPlaylistInfo nextPlaylistInfo = ParsePlaylistJsonResult(result);
                 if(nextPlaylistInfo == null) {
-                    this.playlistListener.onError("An Error occurred when parsing the Subsequent Get Requests");
+                    playlistListener.onError("An Error occurred when parsing the Subsequent Get Requests");
                     return;
                 }
                 playlistInfo.MergePlaylists(nextPlaylistInfo);
                 numSongs += MAX_RESULTS;
             }
 
-            this.playlistListener.onComplete(playlistInfo);
+            playlistListener.onComplete(playlistInfo);
         });
 
         thread.start();
@@ -156,8 +155,8 @@ public class YoutubeUtilities {
                     video.setIsPrivate(true);
                 }
 
-                video.setSource("https://www.youtube.com/watch?v=" + item.getJSONObject("resourceId").getString("videoId"));
-                video.setType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
+                video.setAudioSource("https://www.youtube.com/watch?v=" + item.getJSONObject("resourceId").getString("videoId"));
+                video.setAudioType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
                 playlistResult.AddVideoToPlaylist(video);
             }

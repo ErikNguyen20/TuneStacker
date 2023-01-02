@@ -11,10 +11,12 @@ public class PlaybackAudioInfo {
     private String title;
     private String author;
     private int duration;
-    private PlaybackMediaType type;
+    private PlaybackMediaType audioType;
     private PlaybackMediaType thumbnailType;
-    private String source; /** Path or URL depending on PlaybackMediaType */
+    private String audioSource; /** Path or URL depending on PlaybackMediaType */
     private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
+    private String origin;
+    private PlatformCompatUtility.Platform platformOrigin;
     private boolean isPrivate;
 
     public PlaybackAudioInfo() {
@@ -24,8 +26,8 @@ public class PlaybackAudioInfo {
     public PlaybackAudioInfo(String title, String author, String source, PlaybackMediaType type) {
         this.title = title;
         this.author = author;
-        this.source = source;
-        this.type = type;
+        this.audioSource = source;
+        this.audioType = type;
         this.isPrivate = false;
     }
 
@@ -53,20 +55,20 @@ public class PlaybackAudioInfo {
         this.duration = duration;
     }
 
-    public PlaybackMediaType getType() {
-        return this.type;
+    public PlaybackMediaType getAudioType() {
+        return this.audioType;
     }
 
-    public void setType(PlaybackMediaType type) {
-        this.type = type;
+    public void setAudioType(PlaybackMediaType type) {
+        this.audioType = type;
     }
 
-    public String getSource() {
-        return this.source;
+    public String getAudioSource() {
+        return this.audioSource;
     }
 
-    public void setSource(String source) {
-        this.source = source;
+    public void setAudioSource(String source) {
+        this.audioSource = source;
     }
 
     public String getThumbnailSource() {
@@ -91,5 +93,13 @@ public class PlaybackAudioInfo {
 
     public void setIsPrivate(boolean isPrivate) {
         this.isPrivate = isPrivate;
+    }
+
+    public String getOrigin() {
+        return this.origin;
+    }
+
+    public void setOrigin(String origin) {
+        this.origin = origin;
     }
 }
