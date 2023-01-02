@@ -75,17 +75,18 @@ public class MainActivity extends AppCompatActivity {
             //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
         }
 
-        //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
 
         DataManager.Initialize(this);
         DataManager manager = DataManager.getInstance();
         if(!CheckPermission()) {
-            //RequestPermission();
+            RequestPermission();
         }
-        manager.testSearch();
+
         //manager.getaudiourl("https://www.youtube.com/watch?v=mn-wr_nCTEA");
         //manager.getaudiourl("https://www.youtube.com/watch?v=5QdthXZCgEA");
         //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
+
+        startActivity(new Intent(MainActivity.this,RegisterActivity.class));
     }
 
     @Override

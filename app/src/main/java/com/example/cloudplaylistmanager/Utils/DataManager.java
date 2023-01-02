@@ -93,14 +93,6 @@ public class DataManager {
         return instance;
     }
 
-    public void InitializeUserData() {
-        FirebaseAuth authentication = FirebaseAuth.getInstance();
-        if(authentication.getCurrentUser() != null) {
-            String userId = authentication.getCurrentUser().getUid();
-        }
-
-    }
-
     public void UploadAudioToFirebase(PlaybackAudioInfo audio, StorageReference fileReference) {
         //FirebaseStorage.getInstance().getReference().child("audio").child("TBUploaded File name here");
         if(audio.getAudioType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
@@ -317,7 +309,7 @@ public class DataManager {
      * @param title String title of the audio.
      * @return Hashed string.
      */
-    public String AudioTitleToHash(String title) {
+    public static String AudioTitleToHash(String title) {
         try {
             String chunk = title.split("[.]")[0];
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
