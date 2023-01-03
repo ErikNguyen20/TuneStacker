@@ -27,6 +27,7 @@ public class MusicService extends Service implements
         MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener,
         MediaPlayer.OnBufferingUpdateListener, MediaPlayer.OnErrorListener,
         AudioManager.OnAudioFocusChangeListener {
+    private static final String LOG_TAG = "MusicService";
 
     private MusicServiceBinder musicBinder = new MusicServiceBinder();
     private WifiManager.WifiLock wifiLock = null;
@@ -244,8 +245,8 @@ public class MusicService extends Service implements
             Log.d("MusicPlayer","Preparing...");
             mediaPlayer.prepareAsync();
         } catch(Exception e) {
+            Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
-            Log.e(this.getClass().getName(),(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             //If there is an error preparing this media, skip it to the next one.
             if(this.errorPreparingPositions[this.currentPlayPosition]) {
                 stopSelf();
@@ -308,19 +309,19 @@ public class MusicService extends Service implements
         }
         switch(extra) {
             case MediaPlayer.MEDIA_ERROR_TIMED_OUT:
-                Log.e("MusicPlayer","Media Error - Timed out.");
+                Log.e(LOG_TAG,"Media Error - Timed out.");
                 break;
             case MediaPlayer.MEDIA_ERROR_IO:
-                Log.e("MusicPlayer","Media Error - IO.");
+                Log.e(LOG_TAG,"Media Error - IO.");
                 break;
             case MediaPlayer.MEDIA_ERROR_MALFORMED:
-                Log.e("MusicPlayer","Media Error - Malformed.");
+                Log.e(LOG_TAG,"Media Error - Malformed.");
                 break;
             case MediaPlayer.MEDIA_ERROR_UNSUPPORTED:
-                Log.e("MusicPlayer","Media Error - Unsupported.");
+                Log.e(LOG_TAG,"Media Error - Unsupported.");
                 break;
             default:
-                Log.e("MusicPlayer", "Media Error - Unknown");
+                Log.e(LOG_TAG, "Media Error - Unknown");
         }
         return false;
     }

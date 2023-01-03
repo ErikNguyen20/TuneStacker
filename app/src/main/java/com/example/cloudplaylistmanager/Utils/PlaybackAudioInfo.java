@@ -2,6 +2,7 @@ package com.example.cloudplaylistmanager.Utils;
 
 
 public class PlaybackAudioInfo {
+    public static final String ORIGIN_UPLOAD = "Upload";
     public enum PlaybackMediaType {
         LOCAL,
         STREAM,
@@ -10,22 +11,23 @@ public class PlaybackAudioInfo {
 
     private String title;
     private String author;
-    private int duration;
-    private PlaybackMediaType audioType;
-    private PlaybackMediaType thumbnailType;
-    private String audioSource; /** Path or URL depending on PlaybackMediaType */
-    private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
-    private String origin;
     private PlatformCompatUtility.Platform platformOrigin;
     private boolean isPrivate;
 
+    private String origin;
+    private PlaybackMediaType audioType;
+    private String audioSource; /** Path or URL depending on PlaybackMediaType */
+    private PlaybackMediaType thumbnailType;
+    private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
+
     public PlaybackAudioInfo() {
+        this.author = null;
         this.isPrivate = false;
     }
 
-    public PlaybackAudioInfo(String title, String author, String source, PlaybackMediaType type) {
+    public PlaybackAudioInfo(String title, String source, PlaybackMediaType type) {
         this.title = title;
-        this.author = author;
+        this.author = null;
         this.audioSource = source;
         this.audioType = type;
         this.isPrivate = false;
@@ -45,14 +47,6 @@ public class PlaybackAudioInfo {
 
     public void setAuthor(String author) {
         this.author = author;
-    }
-
-    public int getDuration() {
-        return this.duration;
-    }
-
-    public void setDuration(int duration) {
-        this.duration = duration;
     }
 
     public PlaybackMediaType getAudioType() {

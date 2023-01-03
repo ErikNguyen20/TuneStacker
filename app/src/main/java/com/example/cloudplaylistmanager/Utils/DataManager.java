@@ -1,7 +1,6 @@
 package com.example.cloudplaylistmanager.Utils;
 
 import android.content.Context;
-import android.net.Uri;
 import android.util.Log;
 
 import com.androidnetworking.AndroidNetworking;
@@ -10,10 +9,7 @@ import com.androidnetworking.common.ANResponse;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
 import com.androidnetworking.interfaces.DownloadListener;
-import com.androidnetworking.interfaces.StringRequestListener;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.StorageMetadata;
+import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
 import com.google.firebase.storage.StorageReference;
 import com.yausername.ffmpeg.FFmpeg;
 import com.yausername.youtubedl_android.YoutubeDL;
@@ -26,20 +22,13 @@ import com.yausername.youtubedl_android.mapper.VideoInfo;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 
 interface DownloadFromUrlListener{
     void onComplete(PlaybackAudioInfo audio);
     void onProgressUpdate(float progress, long etaSeconds);
     void onError(int attempt, String error);
-}
-interface UploadSongToFirebaseListener{
-    void onComplete();
-    void onError();
 }
 
 public class DataManager {
@@ -56,6 +45,7 @@ public class DataManager {
     private YoutubeUtilities YtUtilities;
     private File appMusicDirectory;
     private File appCacheDirectory;
+    private File appImageDirectory;
 
 
     private DataManager(Context context) {
@@ -65,6 +55,7 @@ public class DataManager {
             YoutubeDL.getInstance().init(context);
             FFmpeg.getInstance().init(context);
             this.appMusicDirectory = GetLocalMusicDirectory(context);
+            this.appImageDirectory = GetLocalImageDirectory(context);
             this.appCacheDirectory = GetLocalCacheDirectory(context);
             this.downloaderInitialized = true;
         } catch(YoutubeDLException e) {
@@ -93,23 +84,109 @@ public class DataManager {
         return instance;
     }
 
-    public void UploadAudioToFirebase(PlaybackAudioInfo audio, StorageReference fileReference) {
-        //FirebaseStorage.getInstance().getReference().child("audio").child("TBUploaded File name here");
-        if(audio.getAudioType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-            //Download it, then: audio.setAudioSource(filepath);
-        }
-        Uri audioUri = Uri.parse(audio.getAudioSource());
-        Uri imgUri = Uri.parse(audio.getThumbnailSource());
+    //TODO - Make sure to finish this function (Add listener)
+    public void UploadAudioToCloud(PlaybackAudioInfo audio) {
+        Thread thread = new Thread(() -> {
+            FirebaseManager firebase = FirebaseManager.getInstance();
 
-        if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.STREAM) {
-            //Simply store it in the metadata.
-        }
-        else {
+            boolean exists = firebase.CheckIfSongExistsInDatabase(audio.getTitle(),audio.getOrigin());
+            if(exists) {
+                return;
+            }
 
-        }
+            File thumbnailFile = null;
+            switch(audio.getThumbnailType()) {
+                case STREAM:
+                    thumbnailFile = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle());
+                    break;
+                case LOCAL:
+                    thumbnailFile = new File(audio.getThumbnailSource());
+                    if(!thumbnailFile.exists())
+                    {
+                        thumbnailFile = null;
+                    }
+            }
 
-        //String filename = uri.getLastPathSegment();
-        //fileReference.putFile(uri);
+            String thumbnailUrl;
+            if(thumbnailFile != null) {
+                final CountDownLatch latch = new CountDownLatch(1);
+                StringBuilder thumbnailUrlBuilder = new StringBuilder();
+                //Get File size (bytes) thumbnail.length(); UUID.randomUUID().toString()
+                StorageReference reference = firebase.GetStorageReferenceToThumbnails().child(audio.getTitle());
+                firebase.UploadToFirebase(thumbnailFile, reference, new UploadListener() {
+                    @Override
+                    public void onComplete(String downloadUrl) {
+                        thumbnailUrlBuilder.append(downloadUrl);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onError(int errorCode, String message) {
+                        Log.e("TEST_ERROR", message);
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
+                    e.printStackTrace();
+                }
+                if (thumbnailUrlBuilder.toString().isEmpty()) {
+                    thumbnailUrl = FirebaseManager.DEFAULT_THUMBNAIL_MED;
+                }
+            }
+
+
+            File audioFile = null;
+            switch(audio.getAudioType()) {
+                case STREAM:
+                    audioFile = DownloadToLocalStorage(audio.getAudioSource(), this.appImageDirectory, audio.getTitle());
+                    break;
+                case LOCAL:
+                    audioFile = new File(audio.getAudioSource());
+                    if(!audioFile.exists())
+                    {
+                        audioFile = null;
+                    }
+            }
+
+            if(audioFile != null) {
+                final CountDownLatch latch = new CountDownLatch(1);
+                StringBuilder audioUrlBuilder = new StringBuilder();
+                //Get File size (bytes) thumbnail.length(); UUID.randomUUID().toString()
+                StorageReference reference = firebase.GetStorageReferenceToAudio().child(audio.getTitle());
+                firebase.UploadToFirebase(thumbnailFile, reference, new UploadListener() {
+                    @Override
+                    public void onComplete(String downloadUrl) {
+                        audioUrlBuilder.append(downloadUrl);
+                        latch.countDown();
+                    }
+
+                    @Override
+                    public void onError(int errorCode, String message) {
+                        Log.e("TEST_ERROR", message);
+                        latch.countDown();
+                    }
+                });
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
+                    e.printStackTrace();
+                }
+                if (audioUrlBuilder.toString().isEmpty()) {
+                    return;
+                }
+            }
+            else {
+                return;
+            }
+
+
+        });
+
+        thread.start();
     }
 
     /**
@@ -117,6 +194,7 @@ public class DataManager {
      * It is required to implement {@link DownloadFromUrlListener} to obtain the
      * result of this call and to catch potential errors.
      * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * onError returns 0 if the file already exists.
      * @param url Url of the Audio source.
      * @param downloadFromUrlListener Listener used to get the results/errors of this call.
      */
@@ -146,9 +224,12 @@ public class DataManager {
                         downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
                     });
                     responseString = response.getOut();
-                    if(responseString.contains("ERROR:") && response.getErr() != null && !response.getErr().isEmpty()) {
-                        throw new YoutubeDLException(responseString);
+
+                    if(responseString.contains("has already been downloaded")) {
+                        downloadFromUrlListener.onError(0,"File already exists.");
+                        return;
                     }
+
                     success = true;
                 } catch (YoutubeDLException | InterruptedException e) {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
@@ -176,12 +257,9 @@ public class DataManager {
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
-                    if(streamInfo.getTitle().contains("ERROR:")) {
-                        throw new YoutubeDLException(streamInfo.getTitle());
-                    }
                     success = true;
                 } catch (YoutubeDLException | InterruptedException e) {
-                    Log.e("Test",e.getMessage());
+                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
                     e.printStackTrace();
                     downloadFromUrlListener.onError(videoInfoFetchAttemptNumber,"Failed to Fetch Video Information.");
                     audio.setTitle(null);
@@ -195,7 +273,7 @@ public class DataManager {
                 audio = new PlaybackAudioInfo();
                 int startIndex = responseString.indexOf("[ExtractAudio]");
                 int endIndex = responseString.indexOf(".opus");
-                if(startIndex == -1 || endIndex == -1) {
+                if(startIndex != -1 && endIndex != -1) {
                     String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
                     audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length(),sourcePath.length()-5));
                 }
@@ -211,31 +289,46 @@ public class DataManager {
     }
 
     /**
-     * Downloads file with given url to local storage.
+     * Synchronously Downloads file with given url to local storage.
+     * Must not be called from the Main Thread.
      * @param link Link to json on web.
      * @param directory Working directory.
-     * @param filename Name of the File + Extension ex: "accounts.json"
+     * @param fileName Name of the File + Extension ex: "accounts.json"
+     * @return File path to the downloaded file.
      */
-    public void DownloadToLocalStorageAsync(String link, String directory, String filename) {
-        AndroidNetworking.download(link, directory, filename)
+    public File DownloadToLocalStorage(String link, File directory, String fileName) {
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        AndroidNetworking.download(link, directory.getAbsolutePath(), fileName)
                 .setPriority(Priority.MEDIUM)
                 .build().startDownload(new DownloadListener() {
             @Override
             public void onDownloadComplete() {
                 Log.d(LOG_TAG, "Download Complete");
+                latch.countDown();
             }
             @Override
             public void onError(ANError anError) {
                 if (anError.getErrorCode() != 0) {
-                    Log.e(LOG_TAG, "DownloadToLocalStorageAsync errorCode : " + anError.getErrorCode());
-                    Log.e(LOG_TAG, "DownloadToLocalStorageAsync errorBody : " + anError.getErrorBody());
-                    Log.e(LOG_TAG, "DownloadToLocalStorageAsync errorDetail : " + anError.getErrorDetail());
+                    Log.e(LOG_TAG, "DownloadToLocalStorage errorCode : " + anError.getErrorCode());
+                    Log.e(LOG_TAG, "DownloadToLocalStorage errorBody : " + anError.getErrorBody());
+                    Log.e(LOG_TAG, "DownloadToLocalStorage errorDetail : " + anError.getErrorDetail());
                 }
                 else {
-                    Log.e(LOG_TAG, "DownloadToLocalStorageAsync errorDetail : " + anError.getErrorDetail());
+                    Log.e(LOG_TAG, "DownloadToLocalStorage errorDetail : " + anError.getErrorDetail());
                 }
+                latch.countDown();
             }
         });
+
+        try{
+            latch.await();
+        } catch(InterruptedException e) {
+            Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
+            e.printStackTrace();
+        }
+
+        return GetFileFromDirectory(directory, fileName);
     }
 
     /**
@@ -267,32 +360,10 @@ public class DataManager {
         }
     }
 
-    public void testSearch() {
-        AndroidNetworking.get("https://www.youtube.com/results?search_query=orange+mint").build().getAsString(new StringRequestListener() {
-            @Override
-            public void onResponse(String response) {
-                Log.e("Test",response);
-            }
-
-            @Override
-            public void onError(ANError anError) {
-                if (anError.getErrorCode() != 0) {
-                    Log.e(LOG_TAG, "MakeGetRequest errorCode : " + anError.getErrorCode());
-                    Log.e(LOG_TAG, "MakeGetRequest errorBody : " + anError.getErrorBody());
-                    Log.e(LOG_TAG, "MakeGetRequest errorDetail : " + anError.getErrorDetail());
-                }
-                else {
-                    Log.e(LOG_TAG, "MakeGetRequest errorDetail : " + anError.getErrorDetail());
-                }
-                anError.printStackTrace();
-            }
-        });
-    }
-
     public void SyncPlaylist(String url) {
         this.YtUtilities.FetchPlaylistItems(url, new FetchPlaylistListener() {
             @Override
-            public void onComplete(YoutubeUtilities.YtPlaylistInfo fetchedPlaylist) {
+            public void onComplete(PlaylistInfo fetchedPlaylist) {
                 Log.d("DataManager","Playlist Length: " + fetchedPlaylist.getVideos().size());
             }
 
@@ -305,22 +376,23 @@ public class DataManager {
 
 
     /**
-     * Converts an audio title into a hash. Uses SHA-256
+     * Checks to see if the song already exists on the device by title.
      * @param title String title of the audio.
-     * @return Hashed string.
+     * @return If it exists.
      */
-    public static String AudioTitleToHash(String title) {
-        try {
-            String chunk = title.split("[.]")[0];
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(chunk.getBytes(StandardCharsets.UTF_8));
-            BigInteger bi = new BigInteger(1, hash);
-            return String.format("%0" + (hash.length << 1) + "x", bi);
-        } catch (NoSuchAlgorithmException e) {
-            Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
-            e.printStackTrace();
-            return null;
+    public boolean CheckIfSongExists(String title) {
+        File[] files = this.appMusicDirectory.listFiles();
+        if(files == null) {
+            return false;
         }
+        for(File file : files) {
+            if(file.isFile() && file.exists()) {
+                if(title.equalsIgnoreCase(file.getName().split("\\.(?=[^\\.]+$)")[0])) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -338,6 +410,20 @@ public class DataManager {
     }
 
     /**
+     * Gets the Image Directory on the application.
+     * Assumes that permissions have been granted to read/write in the external storage.
+     * @param context Context of the application.
+     * @return File directory path.
+     */
+    public File GetLocalImageDirectory(Context context) {
+        File appImageDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_IMG_STORAGE);
+        if (!appImageDirectory.exists()) {
+            appImageDirectory.mkdir();
+        }
+        return appImageDirectory;
+    }
+
+    /**
      * Gets the Cache Directory on the application.
      * Assumes that permissions have been granted to read/write in the external storage.
      * @param context Context of the application.
@@ -349,5 +435,20 @@ public class DataManager {
             appCacheDirectory.mkdir();
         }
         return appCacheDirectory;
+    }
+
+    /**
+     * Fetches a file object from the local directory with given file name.
+     * @param fileName Name of the file.
+     * @return File object.
+     */
+    public File GetFileFromDirectory(File directory, String fileName) {
+        File searchFile = new File(directory,fileName);
+        if(searchFile.exists()) {
+            return searchFile;
+        }
+        else {
+            return null;
+        }
     }
 }

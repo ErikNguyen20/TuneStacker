@@ -49,11 +49,12 @@ public class RegisterActivity extends AppCompatActivity {
                 else {
                     if(task.getException() != null) {
                         String errorMsg = (task.getException().getMessage() != null) ? task.getException().getMessage() : "An Error has Occurred";
-                        Toast.makeText(this,"User failed to register.",Toast.LENGTH_LONG).show();
+                        Toast.makeText(this,errorMsg,Toast.LENGTH_LONG).show();
                         Log.e(LOG_TAG, errorMsg);
                     }
                     else {
-                        Log.e(LOG_TAG,"An Error has Occurred");
+                        Toast.makeText(this,"User failed to register.",Toast.LENGTH_LONG).show();
+                        Log.e(LOG_TAG,"User failed to register.");
                     }
                 }
             });

@@ -74,6 +74,10 @@ public class MainActivity extends AppCompatActivity {
             //Take user to the landing page.
             //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
         }
+        else {
+            //Temporary for testing.
+            this.authentication.signInWithEmailAndPassword("20nguyened@gmail.com", "Password123");
+        }
 
 
         DataManager.Initialize(this);
@@ -82,11 +86,10 @@ public class MainActivity extends AppCompatActivity {
             RequestPermission();
         }
 
-        //manager.getaudiourl("https://www.youtube.com/watch?v=mn-wr_nCTEA");
-        //manager.getaudiourl("https://www.youtube.com/watch?v=5QdthXZCgEA");
-        //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
+        //manager.UploadAudioToCloud();
+        //Uri uri = new Uri("https://c229.pcloud.com/dpZXgjHqwZpDP9P3Z7COf7ZZoasUc7ZlXZZWKVZZ28KpyD2cCzJbbIJ3kcceXYVPpuF7/Kimino%20Shiranai%20Monogatari.mp3");
 
-        startActivity(new Intent(MainActivity.this,RegisterActivity.class));
+        //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
 
     @Override
@@ -172,7 +175,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void testPlayer() {
         playlist = new ArrayList<>(2);
-        PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari","unknown",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
+        PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         //PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         playlist.add(item);
         //playlist.add(item2);

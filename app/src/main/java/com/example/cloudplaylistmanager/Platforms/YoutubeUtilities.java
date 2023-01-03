@@ -1,22 +1,21 @@
-package com.example.cloudplaylistmanager.Utils;
+package com.example.cloudplaylistmanager.Platforms;
 
 import android.content.Context;
 import android.util.Log;
 
 
+import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.FetchPlaylistListener;
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
+import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
-interface FetchPlaylistListener{
-    void onComplete(YoutubeUtilities.YtPlaylistInfo fetchedPlaylist);
-    void onError(String message);
-}
 
 public class YoutubeUtilities {
     private static final String LOG_TAG = "YoutubeUtilities";
@@ -25,7 +24,7 @@ public class YoutubeUtilities {
 
     private static final String VID_EXTRACT_PATTERN = "/^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*/";
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
-    public static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
+    private static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
 
     private Context context;
 
@@ -61,23 +60,23 @@ public class YoutubeUtilities {
                 playlistListener.onError("Initial Get Request from the API failed.");
                 return;
             }
-            YtPlaylistInfo playlistInfo = ParsePlaylistJsonResult(result);
+            YoutubePlaylistInfo playlistInfo = ParsePlaylistJsonResult(result);
             if(playlistInfo == null) {
                 playlistListener.onError("An Error occurred when parsing the Initial Get Request");
                 return;
             }
 
             //If the playlist is larger than the max results, fetch the next list using the next page token.
-            int maxSongCount = playlistInfo.getTotalResults();
+            int maxSongCount = playlistInfo.GetTotalResults();
             int numSongs = MAX_RESULTS;
             while (numSongs < maxSongCount) {
-                params.put("pageToken",playlistInfo.getNextPageToken());
+                params.put("pageToken",playlistInfo.GetNextPageToken());
                 result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlistItems",params);
                 if(result == null) {
                     playlistListener.onError("Subsequent Get Requests from the API failed.");
                     return;
                 }
-                YtPlaylistInfo nextPlaylistInfo = ParsePlaylistJsonResult(result);
+                YoutubePlaylistInfo nextPlaylistInfo = ParsePlaylistJsonResult(result);
                 if(nextPlaylistInfo == null) {
                     playlistListener.onError("An Error occurred when parsing the Subsequent Get Requests");
                     return;
@@ -121,16 +120,24 @@ public class YoutubeUtilities {
     }
 
     /**
+     * Simply concatenates the base Youtube URL with the id.
+     * @param id Youtube video ID.
+     */
+    public static String GetVideoWithYoutubeID(String id) {
+        return BASE_VIDEO_URL + id;
+    }
+
+    /**
      * Parses the JSON result of the get request from Youtube's playlist list API.
      * @param result JSON Result of the fetch api that will be parsed.
      * @return YtPlaylistInfo object
      */
-    private YtPlaylistInfo ParsePlaylistJsonResult(JSONObject result) {
+    private YoutubePlaylistInfo ParsePlaylistJsonResult(JSONObject result) {
         if(result == null) {
             return null;
         }
         try {
-            YtPlaylistInfo playlistResult = new YtPlaylistInfo();
+            YoutubePlaylistInfo playlistResult = new YoutubePlaylistInfo();
             if(result.has("nextPageToken")) {
                 playlistResult.SetNextPageToken(result.getString("nextPageToken"));
             }
@@ -144,8 +151,8 @@ public class YoutubeUtilities {
                 if(item.has("title")) {
                     video.setTitle(item.getString("title"));
                 }
-                if(item.getJSONObject("thumbnails").has("default")) {
-                    video.setThumbnailSource(item.getJSONObject("thumbnails").getJSONObject("default").getString("url"));
+                if(item.getJSONObject("thumbnails").has("medium")) {
+                    video.setThumbnailSource(item.getJSONObject("thumbnails").getJSONObject("medium").getString("url"));
                     video.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
                 }
                 if(item.has("videoOwnerChannelTitle")) {
@@ -170,13 +177,12 @@ public class YoutubeUtilities {
 
 
 
-    public class YtPlaylistInfo {
+    public class YoutubePlaylistInfo extends PlaylistInfo {
         private String nextPageToken;
         private int totalResults;
-        private ArrayList<PlaybackAudioInfo> videos;
 
-        public YtPlaylistInfo() {
-            this.videos = new ArrayList<>();
+        public YoutubePlaylistInfo() {
+            super();
             this.nextPageToken = null;
         }
 
@@ -188,24 +194,16 @@ public class YoutubeUtilities {
             this.totalResults = totalResults;
         }
 
-        public String getNextPageToken() {
+        public String GetNextPageToken() {
             return this.nextPageToken;
         }
 
-        public int getTotalResults() {
+        public int GetTotalResults() {
             return this.totalResults;
         }
 
-        public ArrayList<PlaybackAudioInfo> getVideos() {
-            return this.videos;
-        }
-
-        public void AddVideoToPlaylist(PlaybackAudioInfo video) {
-            this.videos.add(video);
-        }
-
-        public void MergePlaylists(YtPlaylistInfo other) {
-            this.videos.addAll(other.videos);
+        public void MergePlaylists(YoutubePlaylistInfo other) {
+            super.MergePlaylists(other);
             this.nextPageToken = other.nextPageToken;
         }
     }
