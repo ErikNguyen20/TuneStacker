@@ -22,8 +22,10 @@ import android.provider.Settings;
 import android.util.Log;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.DownloadFromUrlListener;
 import com.example.cloudplaylistmanager.Utils.MusicService;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
+import com.example.cloudplaylistmanager.Utils.UploadToCloudListener;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
@@ -86,8 +88,6 @@ public class MainActivity extends AppCompatActivity {
             RequestPermission();
         }
 
-        //manager.UploadAudioToCloud();
-        //Uri uri = new Uri("https://c229.pcloud.com/dpZXgjHqwZpDP9P3Z7COf7ZZoasUc7ZlXZZWKVZZ28KpyD2cCzJbbIJ3kcceXYVPpuF7/Kimino%20Shiranai%20Monogatari.mp3");
 
         //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }

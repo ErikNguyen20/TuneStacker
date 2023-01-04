@@ -3,6 +3,7 @@ package com.example.cloudplaylistmanager.Utils;
 
 public class PlaybackAudioInfo {
     public static final String ORIGIN_UPLOAD = "Upload";
+    public static final String DEFAULT_TITLE = "Unknown";
     public enum PlaybackMediaType {
         LOCAL,
         STREAM,
@@ -22,6 +23,7 @@ public class PlaybackAudioInfo {
 
     public PlaybackAudioInfo() {
         this.author = null;
+        this.title = DEFAULT_TITLE;
         this.isPrivate = false;
     }
 
@@ -95,5 +97,13 @@ public class PlaybackAudioInfo {
 
     public void setOrigin(String origin) {
         this.origin = origin;
+    }
+
+    public boolean equals(Object o) {
+        if(o instanceof PlaybackAudioInfo) {
+            PlaybackAudioInfo audioObject = (PlaybackAudioInfo) o;
+            return this.title.equals(audioObject.title) || this.origin.equals(audioObject.origin);
+        }
+        return false;
     }
 }

@@ -10,6 +10,7 @@ import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class YoutubeUtilities {
             if(extractedPlaylistID == null) {
                 playlistListener.onError("Invalid Playlist URL.");
             }
+
 
             //Initializes Query Parameters for the HTTP Get Request.
             HashMap<String,String> params = new HashMap<>();
@@ -85,10 +87,54 @@ public class YoutubeUtilities {
                 numSongs += MAX_RESULTS;
             }
 
+            YoutubePlaylistInfo playlistMetadata = GetPlaylistInfo(extractedPlaylistID);
+            if(playlistMetadata != null) {
+                playlistInfo.setTitle(playlistMetadata.getTitle());
+            }
+            else {
+                playlistInfo.setTitle(extractedPlaylistID);
+            }
+
+            playlistInfo.setLinkSource(url);
             playlistListener.onComplete(playlistInfo);
         });
 
         thread.start();
+    }
+
+    /**
+     * Extracts the Playlist Metadata from the Youtube Playlist ID.
+     * @param id ID of the playlist on Youtube.
+     */
+    public YoutubePlaylistInfo GetPlaylistInfo(String id) {
+        //Initializes Query Parameters for the HTTP Get Request.
+        HashMap<String,String> params = new HashMap<>();
+        params.put("part", "snippet");
+        params.put("fields", "items(id,snippet(title,channelId,channelTitle))");
+        params.put("id", id);
+        params.put("key",API_KEY);
+
+        //Makes the Get Request and parses results into a YtPlaylistInfo object.
+        JSONObject result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlists",params);
+        if(result != null) {
+            //Parse result
+            try {
+                YoutubePlaylistInfo playlistInfo = new YoutubePlaylistInfo();
+
+                JSONArray items = result.getJSONArray("items");
+                for(int index = 0; index < items.length(); index++) {
+                    JSONObject item = items.getJSONObject(index).getJSONObject("snippet");
+                    if(item.has("title")) {
+                        playlistInfo.setTitle(item.getString("title"));
+                    }
+                }
+                return playlistInfo;
+            } catch (JSONException e) {
+                Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
+                e.printStackTrace();
+            }
+        }
+        return null;
     }
 
     /**
@@ -162,8 +208,8 @@ public class YoutubeUtilities {
                     video.setIsPrivate(true);
                 }
 
-                video.setAudioSource("https://www.youtube.com/watch?v=" + item.getJSONObject("resourceId").getString("videoId"));
-                video.setAudioType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
+                video.setOrigin(BASE_VIDEO_URL + item.getJSONObject("resourceId").getString("videoId"));
+                video.setAudioType(PlaybackAudioInfo.PlaybackMediaType.UNKNOWN);
 
                 playlistResult.AddVideoToPlaylist(video);
             }

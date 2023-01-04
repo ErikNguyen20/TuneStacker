@@ -2,6 +2,7 @@ package com.example.cloudplaylistmanager.Utils;
 
 import android.content.Context;
 import android.util.Log;
+import android.util.Pair;
 
 import com.androidnetworking.AndroidNetworking;
 import com.androidnetworking.common.ANRequest;
@@ -10,6 +11,7 @@ import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
 import com.androidnetworking.interfaces.DownloadListener;
 import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.storage.StorageReference;
 import com.yausername.ffmpeg.FFmpeg;
 import com.yausername.youtubedl_android.YoutubeDL;
@@ -22,20 +24,23 @@ import com.yausername.youtubedl_android.mapper.VideoInfo;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
-interface DownloadFromUrlListener{
-    void onComplete(PlaybackAudioInfo audio);
-    void onProgressUpdate(float progress, long etaSeconds);
-    void onError(int attempt, String error);
-}
 
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
     private static final String LOCAL_DIRECTORY_CACHE = "cache";
+    private static final String DEFAULT_THUMBNAIL_LOW = "default_thumbnail_low";
+    private static final String DEFAULT_THUMBNAIL_MED = "default_thumbnail_med";
+    private static final String DEFAULT_THUMBNAIL_HIGH = "default_thumbnail_high";
+    public static final String DEFAULT_THUMBNAIL = DEFAULT_THUMBNAIL_MED;
+
     private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 8;
     private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 4;
 
@@ -84,16 +89,25 @@ public class DataManager {
         return instance;
     }
 
-    //TODO - Make sure to finish this function (Add listener)
-    public void UploadAudioToCloud(PlaybackAudioInfo audio) {
+    /**
+     * Uploads song with the given audio information
+     * It is required to implement {@link UploadToCloudListener} to obtain the
+     * result of this call and to catch potential errors.
+     * @param audio Audio information that will be uploaded.
+     * @param uploadToCloudListener Listener used to get the results/errors of this call.
+     */
+    public void UploadAudioToCloud(PlaybackAudioInfo audio, UploadToCloudListener uploadToCloudListener) {
         Thread thread = new Thread(() -> {
             FirebaseManager firebase = FirebaseManager.getInstance();
-
-            boolean exists = firebase.CheckIfSongExistsInDatabase(audio.getTitle(),audio.getOrigin());
-            if(exists) {
+            String uniqueID = UUID.randomUUID().toString();
+            //Checks to see if the song already exists as metadata in the database.
+            Pair<DocumentReference,Boolean> existPath = firebase.FindExistingSongInDatabase(audio.getTitle(),audio.getOrigin());
+            if(existPath != null && existPath.second) {
+                uploadToCloudListener.onError("Audio already exists on the cloud.");
                 return;
             }
 
+            //Fetches/Downloads and uploads the thumbnail.
             File thumbnailFile = null;
             switch(audio.getThumbnailType()) {
                 case STREAM:
@@ -106,13 +120,12 @@ public class DataManager {
                         thumbnailFile = null;
                     }
             }
-
+            //Uploads the thumbnail to the cloud.
             String thumbnailUrl;
             if(thumbnailFile != null) {
                 final CountDownLatch latch = new CountDownLatch(1);
                 StringBuilder thumbnailUrlBuilder = new StringBuilder();
-                //Get File size (bytes) thumbnail.length(); UUID.randomUUID().toString()
-                StorageReference reference = firebase.GetStorageReferenceToThumbnails().child(audio.getTitle());
+                StorageReference reference = firebase.GetStorageReferenceToThumbnails().child(audio.getTitle() + '_' + uniqueID);
                 firebase.UploadToFirebase(thumbnailFile, reference, new UploadListener() {
                     @Override
                     public void onComplete(String downloadUrl) {
@@ -122,7 +135,6 @@ public class DataManager {
 
                     @Override
                     public void onError(int errorCode, String message) {
-                        Log.e("TEST_ERROR", message);
                         latch.countDown();
                     }
                 });
@@ -132,16 +144,23 @@ public class DataManager {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
                     e.printStackTrace();
                 }
-                if (thumbnailUrlBuilder.toString().isEmpty()) {
-                    thumbnailUrl = FirebaseManager.DEFAULT_THUMBNAIL_MED;
+                if (!thumbnailUrlBuilder.toString().isEmpty()) {
+                    thumbnailUrl = thumbnailUrlBuilder.toString();
                 }
+                else {
+                    thumbnailUrl = FirebaseManager.DEFAULT_THUMBNAIL_SOURCE;
+                }
+                audio.setThumbnailSource(thumbnailUrl);
+            }
+            else {
+                audio.setThumbnailSource(FirebaseManager.DEFAULT_THUMBNAIL_SOURCE);
             }
 
-
+            //Fetches/Downloads and uploads the audio.
             File audioFile = null;
             switch(audio.getAudioType()) {
                 case STREAM:
-                    audioFile = DownloadToLocalStorage(audio.getAudioSource(), this.appImageDirectory, audio.getTitle());
+                    audioFile = DownloadToLocalStorage(audio.getAudioSource(), this.appImageDirectory, audio.getTitle()+ '_' + uniqueID);
                     break;
                 case LOCAL:
                     audioFile = new File(audio.getAudioSource());
@@ -149,14 +168,18 @@ public class DataManager {
                     {
                         audioFile = null;
                     }
+                    break;
+                default:
+                    uploadToCloudListener.onError("Audio Source is Invalid.");
+                    return;
             }
-
+            //Uploads the audio to the cloud.
             if(audioFile != null) {
+                //Uploads to Firebase cloud storage. Can specify another location if wanted.
                 final CountDownLatch latch = new CountDownLatch(1);
                 StringBuilder audioUrlBuilder = new StringBuilder();
-                //Get File size (bytes) thumbnail.length(); UUID.randomUUID().toString()
-                StorageReference reference = firebase.GetStorageReferenceToAudio().child(audio.getTitle());
-                firebase.UploadToFirebase(thumbnailFile, reference, new UploadListener() {
+                StorageReference reference = firebase.GetStorageReferenceToAudio().child(audio.getTitle() + '_' + UUID.randomUUID().toString());
+                firebase.UploadToFirebase(audioFile, reference, new UploadListener() {
                     @Override
                     public void onComplete(String downloadUrl) {
                         audioUrlBuilder.append(downloadUrl);
@@ -165,7 +188,8 @@ public class DataManager {
 
                     @Override
                     public void onError(int errorCode, String message) {
-                        Log.e("TEST_ERROR", message);
+                        uploadToCloudListener.onError(message);
+                        Log.e(LOG_TAG, message);
                         latch.countDown();
                     }
                 });
@@ -175,15 +199,34 @@ public class DataManager {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
                     e.printStackTrace();
                 }
-                if (audioUrlBuilder.toString().isEmpty()) {
-                    return;
+                if (!audioUrlBuilder.toString().isEmpty()) {
+                    audio.setAudioSource(audioUrlBuilder.toString());
+                }
+                else {
+                    audio.setAudioSource(null);
                 }
             }
             else {
-                return;
+                uploadToCloudListener.onError("Audio File not Found / Failed to download.");
+                Log.e(LOG_TAG, "Audio File not Found / Failed to download.");
             }
 
-
+            //Updates or Adds the new song's metadata.
+            if(existPath == null) {
+                //External parameter is null because the cloud source is Firebase. We will specify
+                //a parameter if it is stored in some external cloud storage.
+                DocumentReference songMetadata = firebase.CreateNewSongMetadata(audio,null);
+                uploadToCloudListener.onComplete(songMetadata.getPath());
+                Log.d(LOG_TAG, "Created new Song Metadata.");
+            }
+            else {
+                //Metadata should also be updated to include the "external" field if the source is on
+                //on external cloud storage.
+                firebase.UpdateExistingSongAudioUrl(existPath.first.getPath(),audio.getAudioSource());
+                firebase.UpdateExistingSongThumbnailUrl(existPath.first.getPath(),audio.getThumbnailSource());
+                uploadToCloudListener.onComplete(existPath.first.getPath());
+                Log.d(LOG_TAG, "Updated Song Metadata.");
+            }
         });
 
         thread.start();
@@ -210,6 +253,8 @@ public class DataManager {
 
             int downloadAttemptNumber = 1;
             boolean success = false;
+            Log.d(LOG_TAG,"Downloading Song to Directory.");
+            Log.d(LOG_TAG,this.appMusicDirectory.getAbsolutePath());
             while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !success) {
                 request = new YoutubeDLRequest(url);
                 request.addOption("-x");
@@ -227,7 +272,6 @@ public class DataManager {
 
                     if(responseString.contains("has already been downloaded")) {
                         downloadFromUrlListener.onError(0,"File already exists.");
-                        return;
                     }
 
                     success = true;
@@ -252,8 +296,8 @@ public class DataManager {
             while(videoInfoFetchAttemptNumber <= MAX_FETCH_AUDIO_INFO_RETRIES && !success) {
                 try {
                     VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
-                    audio.setTitle(streamInfo.getTitle());
-                    audio.setAuthor(streamInfo.getUploader());
+                    audio.setTitle(streamInfo.getTitle().trim());
+                    audio.setAuthor(streamInfo.getUploader().trim());
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
@@ -262,27 +306,94 @@ public class DataManager {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
                     e.printStackTrace();
                     downloadFromUrlListener.onError(videoInfoFetchAttemptNumber,"Failed to Fetch Video Information.");
-                    audio.setTitle(null);
 
                     //We will retry Fetch
                     videoInfoFetchAttemptNumber++;
                 }
             }
-            //Sets default audio parameters.
+            //Sets fallback audio parameters.
             if(!success) {
                 audio = new PlaybackAudioInfo();
                 int startIndex = responseString.indexOf("[ExtractAudio]");
                 int endIndex = responseString.indexOf(".opus");
                 if(startIndex != -1 && endIndex != -1) {
                     String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
-                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length(),sourcePath.length()-5));
+                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5).trim());
+                }
+                else {
+                    downloadFromUrlListener.onError(-1,"Could not find reference to Downloaded File.");
+                    return;
+                }
+            }
+            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
+            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+            audio.setOrigin(url);
+
+            //Updates the thumbnail source and type.
+            if(audio.getThumbnailSource() != null) {
+                File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle());
+                if(newThumbnail != null) {
+                    audio.setThumbnailSource(newThumbnail.getAbsolutePath());
+                    audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
                 }
             }
 
-            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
-            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
-
             downloadFromUrlListener.onComplete(audio);
+        });
+
+        thread.start();
+    }
+
+    /**
+     * Adds a playlist on the database. The playlist will not be
+     * uploaded and just exists as a placeholder.
+     * @param playlistInfo Link to json on web.
+     * @param platform Platform that the playlist was imported from (Youtube, Spotify, etc).
+     */
+    public void ImportPlaylist(PlaylistInfo playlistInfo, String platform) {
+        Thread thread = new Thread(() -> {
+            FirebaseManager firebase = FirebaseManager.getInstance();
+            if(firebase.FindExistingPlaylistInDatabase(playlistInfo.getLinkSource()) == null) {
+                return;
+            }
+
+            DocumentReference playlistReference = firebase.CreateNewPlaylist(playlistInfo.getTitle(),false,platform,playlistInfo.getLinkSource());
+            ArrayList<DocumentReference> metadataList = new ArrayList<>();
+            for(PlaybackAudioInfo audioInfo : playlistInfo.getVideos()) {
+                Pair<DocumentReference,Boolean> existPath = firebase.FindExistingSongInDatabase(audioInfo.getTitle(),audioInfo.getOrigin());
+                if(existPath == null) {
+                    DocumentReference metadataReference = firebase.CreateNewSongMetadata(audioInfo,null);
+                    metadataList.add(metadataReference);
+                }
+                else {
+                    metadataList.add(existPath.first);
+                }
+            }
+
+            firebase.SetSongsInPlaylist(playlistReference,metadataList);
+        });
+
+        thread.start();
+    }
+
+    /**
+     * Adds a song to the playlist on the database. The song will not be
+     * uploaded and just exists as a placeholder.
+     * @param audioInfo Link to json on web.
+     * @param playlistPath Working directory.
+     */
+    public void AddSongToPlaylist(PlaybackAudioInfo audioInfo, String playlistPath) {
+        Thread thread = new Thread(() -> {
+            FirebaseManager firebase = FirebaseManager.getInstance();
+            Pair<DocumentReference, Boolean> existPath = firebase.FindExistingSongInDatabase(audioInfo.getTitle(), audioInfo.getOrigin());
+            if (existPath != null) {
+                firebase.AddAudioToPlaylist(playlistPath, existPath.first.getPath());
+            } else {
+                audioInfo.setAudioSource(null);
+                audioInfo.setThumbnailSource(null);
+                DocumentReference newMetadata = firebase.CreateNewSongMetadata(audioInfo, null);
+                firebase.AddAudioToPlaylist(playlistPath, newMetadata.getPath());
+            }
         });
 
         thread.start();
@@ -297,8 +408,14 @@ public class DataManager {
      * @return File path to the downloaded file.
      */
     public File DownloadToLocalStorage(String link, File directory, String fileName) {
-        final CountDownLatch latch = new CountDownLatch(1);
+        //Checks to see if it already exists.
+        File checkFile = GetFileFromDirectory(directory, fileName);
+        if(checkFile != null) {
+            return checkFile;
+        }
 
+        //Downloads the file.
+        final CountDownLatch latch = new CountDownLatch(1);
         AndroidNetworking.download(link, directory.getAbsolutePath(), fileName)
                 .setPriority(Priority.MEDIUM)
                 .build().startDownload(new DownloadListener() {
@@ -450,5 +567,17 @@ public class DataManager {
         else {
             return null;
         }
+    }
+
+    /**
+     * Gets the default image when a thumbnail isn't valid.
+     * @return File object.
+     */
+    public File GetDefaultImage() {
+        File newThumbnail = GetFileFromDirectory(this.appImageDirectory, DataManager.DEFAULT_THUMBNAIL);
+        if(newThumbnail == null) {
+            newThumbnail = DownloadToLocalStorage(FirebaseManager.DEFAULT_THUMBNAIL_SOURCE, this.appImageDirectory, DataManager.DEFAULT_THUMBNAIL);
+        }
+        return newThumbnail;
     }
 }
