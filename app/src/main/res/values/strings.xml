@@ -1,3 +1,18 @@
 <resources>
-    <string name="app_name">Cloud Playlist Manager</string>
+    <string name="app_name">TuneStacker</string>
+    <string name="login_button">Login</string>
+    <string name="forgot_password_button">Forgot your password?</string>
+    <string name="register_field_email_hint">Email</string>
+    <string name="register_field_password_hint">Password</string>
+    <string name="register_text_display">Create New Account</string>
+    <string name="register_button">Register</string>
+    <string name="title_activity_landing">LandingActivity</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Library</string>
+    <string name="title_settings">Settings</string>
+    <string name="dashboard_my_playlist">My Playlists</string>
+    <string name="dashboard_imported">Imported</string>
+    <string name="dashboard_saved_songs">Saved Songs</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

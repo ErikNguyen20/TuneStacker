@@ -3,6 +3,7 @@ package com.example.cloudplaylistmanager;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -20,6 +21,8 @@ import android.os.Environment;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.DownloadFromUrlListener;
@@ -33,7 +36,8 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_CODE = 100;
 
-    FirebaseAuth authentication = null;
+    private Button registerButton;
+    private Button loginButton;
 
     private ArrayList<PlaybackAudioInfo> playlist;
     String source = "https://c131.pcloud.com/cBZj91AXKZqN9qzGZ7COf7ZZRxKOc7ZlXZZWKVZRZthQYZhLZtVZrpZjLZQ5ZqkZUzZfRZQFZpkZSVZzXZVpZApZpXZ70Ffzwi87SLAnkcdzXUrmHpjGfk7/whitepromise.m4a";
@@ -62,31 +66,56 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        this.authentication = FirebaseAuth.getInstance();
+        ActionBar actionBar = getSupportActionBar();
+        if(actionBar != null) {
+            actionBar.hide();
+        }
 
-        Intent serviceIntent = new Intent(this, MusicService.class);
-        bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
+        this.loginButton = findViewById(R.id.button_login);
+        this.registerButton = findViewById(R.id.button_register);
+
+        this.loginButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this,LoginActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            }
+        });
+
+        this.registerButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                startActivity(new Intent(MainActivity.this,RegisterActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+            }
+        });
+
+        //Intent serviceIntent = new Intent(this, MusicService.class);
+        //bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
 
-        if(this.authentication.getCurrentUser() != null) {
-            //Take user to the landing page.
-            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
-        }
-        else {
-            //Temporary for testing.
-            this.authentication.signInWithEmailAndPassword("20nguyened@gmail.com", "Password123");
-        }
-
-
-        DataManager.Initialize(this);
-        DataManager manager = DataManager.getInstance();
         if(!CheckPermission()) {
             RequestPermission();
         }
+
+        if(FirebaseAuth.getInstance().getCurrentUser() != null) {
+            //Take user to the landing page.
+            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
+        }
+        startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        //this.finish();
+
+
+
+
+
+        /*DataManager.Initialize(this);
+        DataManager manager = DataManager.getInstance();
+        if(!CheckPermission()) {
+            RequestPermission();
+        }*/
 
 
         //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");

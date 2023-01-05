@@ -14,7 +14,8 @@ public class PlaylistInfo {
 
     public PlaylistInfo() {
         this.videos = new ArrayList<>();
-        this.title = "Unknown Playlist";
+        this.linkSource = null;
+        this.title = "Unnamed Playlist";
     }
 
     public String getTitle() {
