@@ -12,27 +12,21 @@ public class PlaybackAudioInfo {
 
     private String title;
     private String author;
-    private PlatformCompatUtility.Platform platformOrigin;
-    private boolean isPrivate;
-
     private String origin;
     private PlaybackMediaType audioType;
     private String audioSource; /** Path or URL depending on PlaybackMediaType */
     private PlaybackMediaType thumbnailType;
     private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
 
+
     public PlaybackAudioInfo() {
         this.author = null;
+        this.origin = null;
         this.title = DEFAULT_TITLE;
-        this.isPrivate = false;
-    }
-
-    public PlaybackAudioInfo(String title, String source, PlaybackMediaType type) {
-        this.title = title;
-        this.author = null;
-        this.audioSource = source;
-        this.audioType = type;
-        this.isPrivate = false;
+        this.audioType = PlaybackMediaType.UNKNOWN;
+        this.thumbnailType = PlaybackMediaType.UNKNOWN;
+        this.thumbnailSource = null;
+        this.audioSource = null;
     }
 
     public String getTitle() {
@@ -83,14 +77,6 @@ public class PlaybackAudioInfo {
         this.thumbnailType = thumbnailType;
     }
 
-    public boolean getIsPrivate() {
-        return this.isPrivate;
-    }
-
-    public void setIsPrivate(boolean isPrivate) {
-        this.isPrivate = isPrivate;
-    }
-
     public String getOrigin() {
         return this.origin;
     }
@@ -102,8 +88,12 @@ public class PlaybackAudioInfo {
     public boolean equals(Object o) {
         if(o instanceof PlaybackAudioInfo) {
             PlaybackAudioInfo audioObject = (PlaybackAudioInfo) o;
-            return this.title.equals(audioObject.title) || this.origin.equals(audioObject.origin);
+            return this.title.equals(audioObject.title);
         }
         return false;
+    }
+
+    public int hashCode() {
+        return this.title.hashCode();
     }
 }

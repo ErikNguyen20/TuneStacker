@@ -26,6 +26,8 @@ import org.json.JSONObject;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -359,7 +361,7 @@ public class DataManager {
 
             DocumentReference playlistReference = firebase.CreateNewPlaylist(playlistInfo.getTitle(),false,platform,playlistInfo.getLinkSource());
             ArrayList<DocumentReference> metadataList = new ArrayList<>();
-            for(PlaybackAudioInfo audioInfo : playlistInfo.getVideos()) {
+            for(PlaybackAudioInfo audioInfo : playlistInfo.getAllVideos()) {
                 Pair<DocumentReference,Boolean> existPath = firebase.FindExistingSongInDatabase(audioInfo.getTitle(),audioInfo.getOrigin());
                 if(existPath == null) {
                     DocumentReference metadataReference = firebase.CreateNewSongMetadata(audioInfo,null);
@@ -481,7 +483,7 @@ public class DataManager {
         this.YtUtilities.FetchPlaylistItems(url, new FetchPlaylistListener() {
             @Override
             public void onComplete(PlaylistInfo fetchedPlaylist) {
-                Log.d("DataManager","Playlist Length: " + fetchedPlaylist.getVideos().size());
+                Log.d("DataManager","Playlist Length: " + fetchedPlaylist.getAllVideos().size());
             }
 
             @Override
@@ -492,24 +494,49 @@ public class DataManager {
     }
 
 
-    /**
-     * Checks to see if the song already exists on the device by title.
-     * @param title String title of the audio.
-     * @return If it exists.
-     */
-    public boolean CheckIfSongExists(String title) {
+    public PlaylistInfo ConstructPlaylistFromLocalFiles() {
         File[] files = this.appMusicDirectory.listFiles();
         if(files == null) {
-            return false;
+            return null;
         }
+        PlaylistInfo playlistInfo = new PlaylistInfo();
+        playlistInfo.setTitle("From Saved Songs");
+
+        HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory);
         for(File file : files) {
-            if(file.isFile() && file.exists()) {
-                if(title.equalsIgnoreCase(file.getName().split("\\.(?=[^\\.]+$)")[0])) {
-                    return true;
-                }
+            PlaybackAudioInfo audio = new PlaybackAudioInfo();
+            String title = file.getName().split("\\.(?=[^\\.]+$)")[0];
+
+            if(directoryMap.containsKey(title)) {
+                audio.setThumbnailSource(directoryMap.get(title).getAbsolutePath());
+                audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             }
+            audio.setTitle(title);
+            audio.setAudioSource(file.getAbsolutePath());
+            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+            audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
+            playlistInfo.AddVideoToPlaylist(audio);
         }
-        return false;
+
+        return playlistInfo;
+    }
+
+    /**
+     * Constructs a map based on the directory to make it easier to search
+     * for a specific title and fetch the file.
+     * @param directory Source directory
+     * @return Map
+     */
+    public HashMap<String,File> GetMapOfFileDirectory(File directory) {
+        File[] files = directory.listFiles();
+        if(files == null) {
+            return null;
+        }
+        HashMap<String,File> directoryMap = new HashMap<>();
+        for(File file : files) {
+            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
+        }
+        return directoryMap;
     }
 
     /**

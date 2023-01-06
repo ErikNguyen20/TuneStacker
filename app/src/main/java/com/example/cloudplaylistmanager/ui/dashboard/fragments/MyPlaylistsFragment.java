@@ -53,7 +53,7 @@ public class MyPlaylistsFragment extends Fragment {
         playlistRecyclerView.setHasFixedSize(true);
         playlistRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        this.playlistAdapter = new PlaylistRecyclerAdapter(getContext(),this.myPlaylists);
+        this.playlistAdapter = new PlaylistRecyclerAdapter(getContext(),this.myPlaylists, R.string.create_playlist_display);
         playlistRecyclerView.setAdapter(this.playlistAdapter);
 
         Log.e("MyPlaylists","OnCreateView");

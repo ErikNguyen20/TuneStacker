@@ -49,7 +49,6 @@ public class DashboardFragment extends Fragment {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
                 viewPager2.setCurrentItem(tab.getPosition());
-                Log.d("ViewPager","TabSelected: " + tab.getPosition());
             }
 
             @Override
@@ -64,7 +63,6 @@ public class DashboardFragment extends Fragment {
             public void onPageSelected(int position) {
                 super.onPageSelected(position);
                 tabLayout.selectTab(tabLayout.getTabAt(position));
-                Log.d("ViewPager","PageSelected: " + position);
             }
         });
 

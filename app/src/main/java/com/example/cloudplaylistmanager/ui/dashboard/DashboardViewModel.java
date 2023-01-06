@@ -6,6 +6,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
@@ -30,6 +31,11 @@ public class DashboardViewModel extends ViewModel {
         testItem.setTitle("Test LOL");
         test.add(testItem);
         this.myPlaylists.setValue(test);
+
+        PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
+        if(fetchedSavedSongs != null) {
+            this.localVideos.setValue(fetchedSavedSongs);
+        }
     }
 
     public LiveData<ArrayList<PlaylistInfo>> getMyPlaylists() {

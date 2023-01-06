@@ -40,8 +40,6 @@ public class MainActivity extends AppCompatActivity {
     private Button loginButton;
 
     private ArrayList<PlaybackAudioInfo> playlist;
-    String source = "https://c131.pcloud.com/cBZj91AXKZqN9qzGZ7COf7ZZRxKOc7ZlXZZWKVZRZthQYZhLZtVZrpZjLZQ5ZqkZUzZfRZQFZpkZSVZzXZVpZApZpXZ70Ffzwi87SLAnkcdzXUrmHpjGfk7/whitepromise.m4a";
-    String source2 = "https://c402.pcloud.com/dpZeUWHqwZr0Dtg3Z7COf7ZZE9mOc7ZlXZZWKVZZm51CA2v5CpQ7F43D7Jnc0RxcDqfX/Kannagi%20Opening%20Lyrics%20%28KanjiRomanjiT%C3%BCrk%C3%A7e%29.mp3";
 
     MusicService musicService = null;
     ServiceConnection musicServiceConnection = new ServiceConnection() {
@@ -105,18 +103,8 @@ public class MainActivity extends AppCompatActivity {
             //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
         }
         startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-        //this.finish();
 
-
-
-
-
-        /*DataManager.Initialize(this);
-        DataManager manager = DataManager.getInstance();
-        if(!CheckPermission()) {
-            RequestPermission();
-        }*/
-
+        DataManager.Initialize(getApplicationContext());
 
         //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
@@ -204,9 +192,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void testPlayer() {
         playlist = new ArrayList<>(2);
-        PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
+        //PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
         //PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
-        playlist.add(item);
+        //playlist.add(item);
         //playlist.add(item2);
 
         Log.d("MusicPlayer","Initializing...");

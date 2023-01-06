@@ -16,6 +16,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CloudPlaylistManager">
         <activity
+            android:name=".MediaPlayerActivity"
+            android:exported="false" />
+        <activity
             android:name=".LandingActivity"
             android:exported="false"
             android:label="@string/title_activity_landing" />

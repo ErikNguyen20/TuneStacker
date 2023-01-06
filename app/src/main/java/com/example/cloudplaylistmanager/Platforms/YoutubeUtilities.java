@@ -205,7 +205,8 @@ public class YoutubeUtilities {
                     video.setAuthor(item.getString("videoOwnerChannelTitle"));
                 }
                 else {
-                    video.setIsPrivate(true);
+                    video.setTitle("Private");
+                    video.setAuthor("Private");
                 }
 
                 video.setOrigin(BASE_VIDEO_URL + item.getJSONObject("resourceId").getString("videoId"));
