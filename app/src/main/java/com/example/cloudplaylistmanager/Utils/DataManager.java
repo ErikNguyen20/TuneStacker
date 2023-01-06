@@ -500,7 +500,6 @@ public class DataManager {
             return null;
         }
         PlaylistInfo playlistInfo = new PlaylistInfo();
-        playlistInfo.setTitle("From Saved Songs");
 
         HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory);
         for(File file : files) {

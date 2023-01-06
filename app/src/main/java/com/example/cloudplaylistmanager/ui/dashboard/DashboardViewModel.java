@@ -34,6 +34,7 @@ public class DashboardViewModel extends ViewModel {
 
         PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
         if(fetchedSavedSongs != null) {
+            fetchedSavedSongs.setTitle("Saved Songs");
             this.localVideos.setValue(fetchedSavedSongs);
         }
     }
