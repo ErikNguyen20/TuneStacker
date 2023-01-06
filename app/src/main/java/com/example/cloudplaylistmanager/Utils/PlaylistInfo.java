@@ -1,11 +1,14 @@
 package com.example.cloudplaylistmanager.Utils;
 
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.Pair;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
-public class PlaylistInfo {
+public class PlaylistInfo implements Serializable {
     private String title;
     private String linkSource;
     private ArrayList<PlaybackAudioInfo> insertedVideos;

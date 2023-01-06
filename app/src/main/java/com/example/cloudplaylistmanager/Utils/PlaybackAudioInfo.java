@@ -1,14 +1,21 @@
 package com.example.cloudplaylistmanager.Utils;
 
 
-public class PlaybackAudioInfo {
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import java.io.Serializable;
+
+public class PlaybackAudioInfo implements Serializable {
     public static final String ORIGIN_UPLOAD = "Upload";
     public static final String DEFAULT_TITLE = "Unknown";
+
     public enum PlaybackMediaType {
         LOCAL,
         STREAM,
         UNKNOWN
     }
+
 
     private String title;
     private String author;
@@ -96,4 +103,5 @@ public class PlaybackAudioInfo {
     public int hashCode() {
         return this.title.hashCode();
     }
+
 }

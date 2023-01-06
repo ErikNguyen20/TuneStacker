@@ -62,7 +62,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
             ViewHolderItem viewHolder = (ViewHolderItem) holder;
             PlaylistInfo currentPlaylist = this.playlist.get(position - 1);
             viewHolder.title.setText(currentPlaylist.getTitle());
-            viewHolder.other.setText(new String(' ' + currentPlaylist.getAllVideos().size() + " songs"));
+            viewHolder.other.setText(new String(" " + currentPlaylist.getAllVideos().size() + " songs"));
 
             //Sets the icon of the playlist.
             if(!currentPlaylist.getAllVideos().iterator().hasNext()) {

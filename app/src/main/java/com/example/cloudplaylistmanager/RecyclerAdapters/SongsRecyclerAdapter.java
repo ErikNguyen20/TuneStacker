@@ -20,17 +20,28 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import java.util.ArrayList;
 
 public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    private static final int ADD_ITEM_TOKEN = -1; //Token that uniquely identifies the add button
+    public static final int ADD_ITEM_TOKEN = -1; //Token that uniquely identifies the add button
 
     private Context context;
     ArrayList<PlaybackAudioInfo> audios;
     boolean addButtonIncluded;
+    RecyclerViewItemClickedListener itemClickedListener;
 
     public SongsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded) {
         this.context = context;
         this.audios = new ArrayList<>();
         this.audios.addAll(playlist.getAllVideos());
         this.addButtonIncluded = addButtonIncluded;
+        this.itemClickedListener = null;
+    }
+
+    public SongsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded,
+                                RecyclerViewItemClickedListener itemClickedListener) {
+        this.context = context;
+        this.audios = new ArrayList<>();
+        this.audios.addAll(playlist.getAllVideos());
+        this.addButtonIncluded = addButtonIncluded;
+        this.itemClickedListener = itemClickedListener;
     }
 
     @NonNull
@@ -83,6 +94,12 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
         }
     }
 
+    public void ViewHolderClicked(int viewType, int position) {
+        if(this.itemClickedListener != null) {
+            this.itemClickedListener.onClicked(viewType,position);
+        }
+    }
+
     public void updateData(PlaylistInfo playlist) {
         this.audios.clear();
         this.audios.addAll(playlist.getAllVideos());
@@ -109,6 +126,7 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
                 @Override
                 public void onClick(View view) {
                     Log.e("SongRecycler","Clicked");
+                    ViewHolderClicked(getItemViewType(), getLayoutPosition());
                 }
             });
         }
@@ -125,10 +143,12 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
             this.icon = itemView.findViewById(R.id.imageView_item);
             this.title = itemView.findViewById(R.id.textView_item_title);
 
+
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     Log.e("SongRecycler","Add Button Clicked");
+                    ViewHolderClicked(getItemViewType(), getLayoutPosition());
                 }
             });
         }

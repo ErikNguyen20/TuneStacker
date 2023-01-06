@@ -16,6 +16,12 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 
 
 /**
@@ -28,8 +34,11 @@ public class MusicService extends Service implements
         MediaPlayer.OnBufferingUpdateListener, MediaPlayer.OnErrorListener,
         AudioManager.OnAudioFocusChangeListener {
     private static final String LOG_TAG = "MusicService";
+    public static final int NEXT_SONG_IGNORED = -1;
+    public static final int NEXT_SONG_PREV = -2;
 
     private MusicServiceBinder musicBinder = new MusicServiceBinder();
+    private OnUpdatePlayerListener onUpdatePlayerListener = null;
     private WifiManager.WifiLock wifiLock = null;
     private MediaPlayer mediaPlayer = null;
 
@@ -39,6 +48,7 @@ public class MusicService extends Service implements
     private int currentPlayPosition, songCounter;
     private boolean isShuffle, isRepeat = false;
     private boolean isPaused, isReduced = false; //Reduced when AudioManager invokes audio focus loss transient can duck
+    private boolean isInitialized, isStopped = false;
     private int bufferingProgressPercent = 0;
 
     /**
@@ -49,6 +59,7 @@ public class MusicService extends Service implements
         if(this.mediaPlayer == null) {
             NewMediaPlayer();
         }
+        this.isInitialized = false;
         this.mediaPlayer.reset();
         this.currentPlayPosition = 0;
         this.songCounter = 0;
@@ -58,12 +69,20 @@ public class MusicService extends Service implements
     }
 
     /**
+     * Sets the listener for the music service.
+     * @param onUpdatePlayerListener Interface for the service.
+     */
+    public void SetOnUpdatePlayerListener(OnUpdatePlayerListener onUpdatePlayerListener) {
+        this.onUpdatePlayerListener = onUpdatePlayerListener;
+    }
+
+    /**
      * Method that begins playing audio from the music service.
      * @param startPos Starting audio position in the list.
      * @param shuffle True = Music Player will select songs randomly.
      * @param repeat True = Music Player will repeat the playlist after it is finished.
      */
-    public synchronized void BeginPlaying(int startPos, boolean shuffle, boolean repeat) {
+    public void BeginPlaying(int startPos, boolean shuffle, boolean repeat) {
         this.songCounter = startPos - 1;
         this.isShuffle = shuffle;
         this.isRepeat = repeat;
@@ -71,47 +90,79 @@ public class MusicService extends Service implements
         if(!this.wifiLock.isHeld()) {
             this.wifiLock.acquire();
         }
-        NextSong(-1);
+        NextSong(NEXT_SONG_IGNORED);
     }
+
+
 
     /**
      * Resumes the Music Player.
      */
-    public synchronized void Resume() {
+    public void Resume() {
+        if(!this.isInitialized) {
+            return;
+        }
         if(!this.wifiLock.isHeld()) {
             this.wifiLock.acquire();
         }
         this.mediaPlayer.start();
         this.isPaused = false;
+
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onPauseUpdate(false);
+        }
     }
 
     /**
      * Stops the Music Player.
      */
-    public synchronized void Stop() {
+    public void Stop() {
+        if(!this.isInitialized) {
+            return;
+        }
         if(this.wifiLock.isHeld()) {
             this.wifiLock.release();
         }
         this.mediaPlayer.stop();
         this.isPaused = false;
+        this.isStopped = true;
     }
 
     /**
      * Pauses the Music Player.
      */
-    public synchronized void Pause() {
+    public void Pause() {
+        if(!this.isInitialized) {
+            return;
+        }
+        if(this.isStopped) {
+            this.isStopped = false;
+            NextSong(this.currentPlayPosition);
+            return;
+        }
+        if(this.isPaused) {
+            Resume();
+            return;
+        }
         if(this.wifiLock.isHeld()) {
             this.wifiLock.release();
         }
         this.mediaPlayer.pause();
         this.isPaused = true;
+
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onPauseUpdate(true);
+        }
     }
 
     /**
      * Moves media to time position.
      * @param pos Time position in milliseconds.
      */
-    public synchronized void SeekTo(int pos) {
+    public void SeekTo(int pos) {
+        if(!this.isInitialized) {
+            return;
+        }
         if(pos > this.mediaPlayer.getDuration()) {
             pos = this.mediaPlayer.getDuration();
         }
@@ -125,7 +176,7 @@ public class MusicService extends Service implements
      * Forcefully switches current playing song to another.
      * @param pos New song's position in the given playlist.
      */
-    public synchronized void SwitchSong(int pos) {
+    public void SwitchSong(int pos) {
         Stop();
         NextSong(pos);
     }
@@ -133,35 +184,44 @@ public class MusicService extends Service implements
     /**
      * Retrieves the total duration of the current audio.
      */
-    public synchronized int GetDuration() {
+    public int GetDuration() {
+        if(!this.isInitialized) {
+            return 0;
+        }
         return this.mediaPlayer.getDuration();
     }
 
     /**
      * Retrieves the current time position of the Music Player.
      */
-    public synchronized int GetCurrentPosition() {
+    public int GetCurrentPosition() {
+        if(!this.isInitialized) {
+            return 0;
+        }
         return this.mediaPlayer.getCurrentPosition();
     }
 
     /**
      * Retrieves the current buffering progress of the Music Player (0-100).
      */
-    public synchronized int GetBufferingProgress() {
+    public int GetBufferingProgress() {
+        if(!this.isInitialized) {
+            return 0;
+        }
         return this.bufferingProgressPercent;
     }
 
     /**
      * Retrieves the current audio's information.
      */
-    public synchronized PlaybackAudioInfo GetAudioInfo() {
+    public PlaybackAudioInfo GetAudioInfo() {
         return this.playlist.get(this.currentPlayPosition);
     }
 
     /**
      * Retrieves Paused state of the Music Player.
      */
-    public synchronized boolean IsPaused() {
+    public boolean IsPaused() {
         return this.isPaused;
     }
 
@@ -171,6 +231,16 @@ public class MusicService extends Service implements
      */
     public void SetShuffle(boolean shuffle) {
         this.isShuffle = shuffle;
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onShuffleUpdate(this.isShuffle);
+        }
+    }
+
+    /**
+     * Retrieves Shuffled state of the Music Player.
+     */
+    public boolean IsShuffle() {
+        return this.isShuffle;
     }
 
     /**
@@ -179,6 +249,16 @@ public class MusicService extends Service implements
      */
     public void SetRepeat(boolean repeat) {
         this.isRepeat = repeat;
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onRepeatUpdate(this.isRepeat);
+        }
+    }
+
+    /**
+     * Retrieves Repeated state of the Music Player.
+     */
+    public boolean IsRepeat() {
+        return this.isRepeat;
     }
 
     /**
@@ -189,12 +269,18 @@ public class MusicService extends Service implements
             stopSelf();
             return;
         }
-        if(overridePosition == -1) {
+        if(overridePosition == NEXT_SONG_PREV) {
+            this.songCounter = (this.songCounter - 2) % this.playlist.size();
+        }
+        if(overridePosition == NEXT_SONG_IGNORED) {
             //Increments the song counter and checks if repeat mode is enabled.
             this.songCounter++;
             if(this.songCounter >= this.playlist.size()) {
                 if(!this.isRepeat) {
-                    stopSelf();
+                    if(this.onUpdatePlayerListener != null) {
+                        this.onUpdatePlayerListener.onPauseUpdate(true);
+                    }
+                    this.isStopped = true;
                     return;
                 }
                 //Regenerates a new shuffled list for the next play through.
@@ -222,7 +308,14 @@ public class MusicService extends Service implements
 
         //Selects the audio from the playlist.
         PlaybackAudioInfo audio = this.playlist.get(this.currentPlayPosition);
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onSongChange(audio);
+            this.onUpdatePlayerListener.onPauseUpdate(this.isPaused);
+            this.onUpdatePlayerListener.onShuffleUpdate(this.isShuffle);
+            this.onUpdatePlayerListener.onRepeatUpdate(this.isRepeat);
+        }
         this.isPaused = false;
+        this.isInitialized = false;
         this.mediaPlayer.reset();
         this.bufferingProgressPercent = 0;
         if(!this.wifiLock.isHeld()) {
@@ -234,10 +327,8 @@ public class MusicService extends Service implements
         try{
             switch(audio.getAudioType()) {
                 case STREAM:
-                    this.mediaPlayer.setDataSource(audio.getAudioSource());
-                    break;
                 case LOCAL:
-                    this.mediaPlayer.setDataSource(this, Uri.parse(audio.getAudioSource()));
+                    this.mediaPlayer.setDataSource(audio.getAudioSource());
                     break;
                 case UNKNOWN:
                     throw new Exception("Unknown Media Source");
@@ -253,7 +344,7 @@ public class MusicService extends Service implements
             }
             else {
                 this.errorPreparingPositions[this.currentPlayPosition] = true;
-                NextSong(-1);
+                NextSong(NEXT_SONG_IGNORED);
             }
         }
     }
@@ -272,6 +363,7 @@ public class MusicService extends Service implements
             if(this.mediaPlayer.isPlaying()) {
                 this.mediaPlayer.stop();
             }
+            this.mediaPlayer.reset();
             this.mediaPlayer.release();
         }
         if(this.wifiLock.isHeld()) {
@@ -290,11 +382,15 @@ public class MusicService extends Service implements
         if(mP.isPlaying()) {
             mP.stop();
         }
-        NextSong(-1);
+        NextSong(NEXT_SONG_IGNORED);
     }
 
     @Override
     public void onPrepared(MediaPlayer mP) {
+        this.isInitialized = true;
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onPrepared(GetDuration());
+        }
         if(!mP.isPlaying()) {
             Log.d("MusicPlayer","Playing.");
             mP.start();

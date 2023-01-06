@@ -1,5 +1,6 @@
 package com.example.cloudplaylistmanager.ui.dashboard.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -13,9 +14,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.cloudplaylistmanager.MainActivity;
+import com.example.cloudplaylistmanager.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistRecyclerAdapter;
+import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsRecyclerAdapter;
+import com.example.cloudplaylistmanager.RegisterActivity;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
 
@@ -53,7 +58,18 @@ public class SavedSongsFragment extends Fragment {
         songRecyclerView.setHasFixedSize(true);
         songRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        this.songsAdapter = new SongsRecyclerAdapter(getContext(),this.savedSongs, true);
+        //Implement a listener to capture clicks on the recycler view items.
+        this.songsAdapter = new SongsRecyclerAdapter(getContext(), this.savedSongs, true, new RecyclerViewItemClickedListener() {
+            @Override
+            public void onClicked(int viewType, int position) {
+                if(viewType != SongsRecyclerAdapter.ADD_ITEM_TOKEN) {
+                    Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,savedSongs);
+                    intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
+                    startActivity(intent);
+                }
+            }
+        });
         songRecyclerView.setAdapter(this.songsAdapter);
 
         return view;
