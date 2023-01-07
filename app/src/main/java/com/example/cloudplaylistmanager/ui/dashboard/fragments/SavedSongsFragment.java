@@ -9,22 +9,16 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-import com.example.cloudplaylistmanager.MainActivity;
-import com.example.cloudplaylistmanager.MediaPlayerActivity;
+import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
-import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsRecyclerAdapter;
-import com.example.cloudplaylistmanager.RegisterActivity;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
-
-import java.util.ArrayList;
 
 /**
  * A simple {@link Fragment} subclass.

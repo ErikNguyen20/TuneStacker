@@ -9,29 +9,19 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.os.IBinder;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
-import com.example.cloudplaylistmanager.Utils.DownloadFromUrlListener;
-import com.example.cloudplaylistmanager.Utils.MusicService;
-import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
-import com.example.cloudplaylistmanager.Utils.UploadToCloudListener;
 import com.google.firebase.auth.FirebaseAuth;
-
-import java.util.ArrayList;
 
 public class MainActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_CODE = 100;
@@ -39,25 +29,6 @@ public class MainActivity extends AppCompatActivity {
     private Button registerButton;
     private Button loginButton;
 
-    private ArrayList<PlaybackAudioInfo> playlist;
-
-    MusicService musicService = null;
-    ServiceConnection musicServiceConnection = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-            Log.d("MusicService","Service Connected...");
-            MusicService.MusicServiceBinder binder = (MusicService.MusicServiceBinder) iBinder;
-            musicService = binder.getBinder();
-
-            //testPlayer();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName componentName) {
-            musicService = null;
-            Log.d("MusicService","Service Disconnected");
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,8 +57,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        //Intent serviceIntent = new Intent(this, MusicService.class);
-        //bindService(serviceIntent, this.musicServiceConnection, Context.BIND_AUTO_CREATE);
+        DataManager.Initialize(getApplicationContext());
     }
 
     @Override
@@ -103,20 +73,11 @@ public class MainActivity extends AppCompatActivity {
             //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
         }
         startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-
-        DataManager.Initialize(getApplicationContext());
-
-        //manager.SyncPlaylist("https://www.youtube.com/playlist?list=PLL1BqiG1yrUVtv9Ff2cWxCPW0aIHZYX6o");
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-
-        if(musicService != null) {
-            //Stops the music service.
-            //unbindService(this.musicServiceConnection);
-        }
     }
 
 
@@ -188,17 +149,5 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         }
-    }
-
-    public void testPlayer() {
-        playlist = new ArrayList<>(2);
-        //PlaybackAudioInfo item = new PlaybackAudioInfo("monogatari",source, PlaybackAudioInfo.PlaybackMediaType.STREAM);
-        //PlaybackAudioInfo item2 = new PlaybackAudioInfo("kannagi","unknown",100000,source2, PlaybackAudioInfo.PlaybackMediaType.STREAM);
-        //playlist.add(item);
-        //playlist.add(item2);
-
-        Log.d("MusicPlayer","Initializing...");
-        musicService.InitializePlayer(playlist);
-        musicService.BeginPlaying(0,true,true);
     }
 }

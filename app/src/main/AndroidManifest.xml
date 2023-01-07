@@ -10,13 +10,14 @@
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:name=".MusicPlayer.ApplicationClass"
         android:label="@string/app_name"
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CloudPlaylistManager">
         <activity
-            android:name=".MediaPlayerActivity"
+            android:name=".MusicPlayer.MediaPlayerActivity"
             android:exported="false" />
         <activity
             android:name=".LandingActivity"
@@ -30,10 +31,19 @@
             android:exported="false" />
 
         <service
-            android:name=".Utils.MusicService"
+            android:name=".MusicPlayer.MusicService"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name" />
+        <receiver android:name=".MusicPlayer.NotificationReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="PREVIOUS" />
+                <action android:name="PLAY"/>
+                <action android:name="NEXT"/>
+            </intent-filter>
+        </receiver>
 
         <activity
             android:name=".MainActivity"

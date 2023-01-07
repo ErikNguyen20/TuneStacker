@@ -27,12 +27,12 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
     boolean addButtonIncluded;
     RecyclerViewItemClickedListener itemClickedListener;
 
-    public SongsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded) {
+    public SongsRecyclerAdapter(Context context, ArrayList<PlaybackAudioInfo> allSongs, boolean addButtonIncluded,
+                                RecyclerViewItemClickedListener itemClickedListener) {
         this.context = context;
-        this.audios = new ArrayList<>();
-        this.audios.addAll(playlist.getAllVideos());
+        this.audios = allSongs;
         this.addButtonIncluded = addButtonIncluded;
-        this.itemClickedListener = null;
+        this.itemClickedListener = itemClickedListener;
     }
 
     public SongsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded,
@@ -96,8 +96,12 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
 
     public void ViewHolderClicked(int viewType, int position) {
         if(this.itemClickedListener != null) {
-            this.itemClickedListener.onClicked(viewType,position);
+            this.itemClickedListener.onClicked(viewType,this.addButtonIncluded ? position - 1 : position);
         }
+    }
+
+    public ArrayList<PlaybackAudioInfo> getData() {
+        return this.audios;
     }
 
     public void updateData(PlaylistInfo playlist) {
@@ -125,7 +129,6 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Log.e("SongRecycler","Clicked");
                     ViewHolderClicked(getItemViewType(), getLayoutPosition());
                 }
             });
@@ -147,7 +150,6 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Log.e("SongRecycler","Add Button Clicked");
                     ViewHolderClicked(getItemViewType(), getLayoutPosition());
                 }
             });
