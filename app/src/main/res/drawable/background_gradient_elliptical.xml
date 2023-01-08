@@ -6,8 +6,8 @@
     <gradient
         android:type="linear"
         android:startColor="?attr/colorPrimaryVariant"
-        android:centerColor="?attr/colorOnSecondary"
-        android:endColor="?attr/colorOnSecondary"
+        android:centerColor="?attr/colorSolidPrimary"
+        android:endColor="?attr/colorSolidPrimary"
         android:angle="270"
         />
 

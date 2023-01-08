@@ -5,6 +5,7 @@
         <item name="colorPrimary">@color/teal_200_light</item>
         <item name="colorPrimaryVariant">@color/teal_700_light</item>
         <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSolidPrimary">@color/white</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/black</item>
         <item name="colorSecondaryVariant">@color/dark_gray</item>
@@ -13,4 +14,11 @@
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
         <!-- Customize your theme here. -->
     </style>
+    <style name="Theme.CloudPlaylistManager.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+    </style>
+    <style name="Theme.CloudPlaylistManager.AppBarOverlay"
+        parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
+    <style name="Theme.CloudPlaylistManager.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 </resources>

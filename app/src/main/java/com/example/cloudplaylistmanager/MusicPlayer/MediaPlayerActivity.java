@@ -375,6 +375,12 @@ public class MediaPlayerActivity extends AppCompatActivity {
         if(this.handler != null) {
             this.handler.removeCallbacksAndMessages(null);
         }
+        if(this.updateNotificationReciver != null) {
+            unregisterReceiver(this.updateNotificationReciver);
+        }
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        notificationManager.cancel(0);
+
         if(this.musicService != null) {
             //Stops the music service.
             Log.d("MusicService","Service Unbinding...");

@@ -8,14 +8,17 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
+        android:name=".MusicPlayer.ApplicationClass"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:name=".MusicPlayer.ApplicationClass"
         android:label="@string/app_name"
         android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CloudPlaylistManager">
+        <activity
+            android:name=".ui.playlistviewnested.PlaylistNestedActivity"
+            android:exported="false" />
         <activity
             android:name=".MusicPlayer.MediaPlayerActivity"
             android:exported="false" />
@@ -35,13 +38,15 @@
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name" />
-        <receiver android:name=".MusicPlayer.NotificationReceiver"
-            android:exported="true"
-            android:enabled="true">
+
+        <receiver
+            android:name=".MusicPlayer.NotificationReceiver"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="PREVIOUS" />
-                <action android:name="PLAY"/>
-                <action android:name="NEXT"/>
+                <action android:name="PLAY" />
+                <action android:name="NEXT" />
             </intent-filter>
         </receiver>
 

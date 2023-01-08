@@ -38,7 +38,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(this.context);
         if(viewType == ADD_ITEM_TOKEN) {
-            View view = inflater.inflate(R.layout.single_line_item, parent, false);
+            View view = inflater.inflate(R.layout.single_line_item_add, parent, false);
             return new ViewHolderAdd(view);
         }
         else {
@@ -52,7 +52,6 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
         if(holder.getItemViewType() == ADD_ITEM_TOKEN) {
             ViewHolderAdd viewHolder = (ViewHolderAdd) holder;
             viewHolder.title.setText(this.addButtonResId);
-            viewHolder.icon.setImageResource(R.drawable.add_new_image);
         }
         else {
             if(this.playlist.isEmpty()) {

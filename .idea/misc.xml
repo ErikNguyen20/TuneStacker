@@ -8,10 +8,12 @@
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/drawable/button_background_primary.xml" value="0.26510416666666664" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/drawable/edit_text_background.xml" value="0.26510416666666664" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/drawable/music_item.xml" value="0.1875" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/drawable/options_menu_song.xml" value="0.27708333333333335" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_landing.xml" value="0.23324275362318841" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_login.xml" value="0.264" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_main.xml" value="0.264" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_media_player.xml" value="0.20572916666666666" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_playlist_nested.xml" value="0.2595108695652174" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/activity_register.xml" value="0.264" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/add_item.xml" value="0.27219202898550726" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/double_line_item.xml" value="0.20572916666666666" />
@@ -21,8 +23,13 @@
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/fragment_my_playlists.xml" value="0.1" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/fragment_saved_songs.xml" value="0.19166666666666668" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/music_item.xml" value="0.1671875" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/options_menu_song.xml" value="0.25677083333333334" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/playlist_item.xml" value="0.264" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/single_line_item.xml" value="0.25677083333333334" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/single_line_item_add.xml" value="0.25677083333333334" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/layout/single_line_item_with_options.xml" value="0.25677083333333334" />
         <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/menu/bottom_nav_menu.xml" value="0.31979166666666664" />
+        <entry key="..\:/Users/Erik/AndroidStudioProjects/CloudPlaylistManager/app/src/main/res/menu/song_item_options.xml" value="0.25677083333333334" />
       </map>
     </option>
   </component>

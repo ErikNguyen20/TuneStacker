@@ -48,11 +48,12 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(this.context);
-        View view = inflater.inflate(R.layout.single_line_item, parent, false);
         if(viewType == ADD_ITEM_TOKEN) {
+            View view = inflater.inflate(R.layout.single_line_item_add, parent, false);
             return new SongsRecyclerAdapter.ViewHolderAdd(view);
         }
         else {
+            View view = inflater.inflate(R.layout.single_line_item, parent, false);
             return new SongsRecyclerAdapter.ViewHolderItem(view);
         }
     }
@@ -62,14 +63,14 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
         if(holder.getItemViewType() == ADD_ITEM_TOKEN) {
             ViewHolderAdd viewHolder = (ViewHolderAdd) holder;
             viewHolder.title.setText(R.string.add_song_display);
-            viewHolder.icon.setImageResource(R.drawable.add_new_image);
         }
         else {
             if(this.audios.isEmpty()) {
                 return;
             }
-
             ViewHolderItem viewHolder = (ViewHolderItem) holder;
+
+            //Populate the view with information on the UI.
             PlaybackAudioInfo audio = this.audios.get(this.addButtonIncluded ? position - 1 : position);
 
             viewHolder.title.setText(audio.getTitle());
