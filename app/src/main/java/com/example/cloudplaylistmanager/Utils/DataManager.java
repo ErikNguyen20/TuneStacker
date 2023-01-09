@@ -274,6 +274,7 @@ public class DataManager {
 
                     if(responseString.contains("has already been downloaded")) {
                         downloadFromUrlListener.onError(0,"File already exists.");
+                        return;
                     }
 
                     success = true;
@@ -479,20 +480,6 @@ public class DataManager {
         }
     }
 
-    public void SyncPlaylist(String url) {
-        this.YtUtilities.FetchPlaylistItems(url, new FetchPlaylistListener() {
-            @Override
-            public void onComplete(PlaylistInfo fetchedPlaylist) {
-                Log.d("DataManager","Playlist Length: " + fetchedPlaylist.getAllVideos().size());
-            }
-
-            @Override
-            public void onError(String message) {
-                Log.e("DataManager",message);
-            }
-        });
-    }
-
 
     public PlaylistInfo ConstructPlaylistFromLocalFiles() {
         File[] files = this.appMusicDirectory.listFiles();
@@ -524,7 +511,7 @@ public class DataManager {
      * Constructs a map based on the directory to make it easier to search
      * for a specific title and fetch the file.
      * @param directory Source directory
-     * @return Map
+     * @return Map(String, File)
      */
     public HashMap<String,File> GetMapOfFileDirectory(File directory) {
         File[] files = directory.listFiles();

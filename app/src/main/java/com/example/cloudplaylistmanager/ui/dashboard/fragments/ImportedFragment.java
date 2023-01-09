@@ -1,5 +1,6 @@
 package com.example.cloudplaylistmanager.ui.dashboard.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -13,8 +14,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistRecyclerAdapter;
+import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
 
@@ -37,6 +40,22 @@ public class ImportedFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_imported, container, false);
 
+        //Instantiates new Recycler View and sets the adapter.
+        RecyclerView playlistRecyclerView = view.findViewById(R.id.recyclerView_imported);
+        playlistRecyclerView.setHasFixedSize(true);
+        playlistRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+
+        this.playlistAdapter = new PlaylistRecyclerAdapter(getContext(), this.importedPlaylists, R.string.import_playlist_display, new RecyclerViewItemClickedListener() {
+            @Override
+            public void onClicked(int viewType, int position) {
+                if(viewType != PlaylistRecyclerAdapter.ADD_ITEM_TOKEN) {
+
+                }
+            }
+        });
+        playlistRecyclerView.setAdapter(this.playlistAdapter);
+
+
         //Fetches data from the ViewModel.
         DashboardViewModel viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);
         viewModel.getImportedPlaylists().observe(getViewLifecycleOwner(), new Observer<ArrayList<PlaylistInfo>>() {
@@ -47,15 +66,13 @@ public class ImportedFragment extends Fragment {
             }
         });
 
-        //Instantiates new Recycler View and sets the adapter.
-        RecyclerView playlistRecyclerView = view.findViewById(R.id.recyclerView_imported);
-        playlistRecyclerView.setHasFixedSize(true);
-        playlistRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
-
-        this.playlistAdapter = new PlaylistRecyclerAdapter(getContext(),this.importedPlaylists, R.string.import_playlist_display);
-        playlistRecyclerView.setAdapter(this.playlistAdapter);
-
         Log.e("ImportedFragment","OnCreateView");
         return view;
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        //We can induce a refresh of the recycler if needed.
     }
 }

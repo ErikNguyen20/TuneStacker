@@ -37,16 +37,6 @@ public class SavedSongsFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_saved_songs, container, false);
 
-        //Fetches data from the ViewModel.
-        DashboardViewModel viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);
-        viewModel.getLocalVideos().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
-            @Override
-            public void onChanged(PlaylistInfo playlistInfo) {
-                savedSongs = playlistInfo;
-                songsAdapter.updateData(playlistInfo);
-            }
-        });
-
         //Instantiates new Recycler View and sets the adapter.
         RecyclerView songRecyclerView = view.findViewById(R.id.recyclerView_saved_songs);
         songRecyclerView.setHasFixedSize(true);
@@ -66,6 +56,15 @@ public class SavedSongsFragment extends Fragment {
         });
         songRecyclerView.setAdapter(this.songsAdapter);
 
+        //Fetches data from the ViewModel.
+        DashboardViewModel viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);
+        viewModel.getLocalVideos().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
+            @Override
+            public void onChanged(PlaylistInfo playlistInfo) {
+                savedSongs = playlistInfo;
+                songsAdapter.updateData(playlistInfo);
+            }
+        });
         return view;
     }
 }

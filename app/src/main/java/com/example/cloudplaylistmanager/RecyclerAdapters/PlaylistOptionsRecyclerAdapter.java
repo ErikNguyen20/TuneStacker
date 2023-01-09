@@ -3,15 +3,15 @@ package com.example.cloudplaylistmanager.RecyclerAdapters;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.StringRes;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.cloudplaylistmanager.R;
@@ -20,20 +20,18 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
 
-public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+public class PlaylistOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public static final int ADD_ITEM_TOKEN = -1; //Token that uniquely identifies the add button
-    @StringRes
-    private int addButtonResId;
-    private Context context;
-    private ArrayList<PlaylistInfo> playlist;
-    RecyclerViewItemClickedListener itemClickedListener;
 
-    public PlaylistRecyclerAdapter(Context context, ArrayList<PlaylistInfo> playlist, @StringRes int addButtonResId,
-                                   RecyclerViewItemClickedListener itemClickedListener) {
+    private Context context;
+    private ArrayList<PlaylistInfo> playlists;
+    RecyclerViewOptionsListener recyclerViewPlaylistOptionsListener;
+
+    public PlaylistOptionsRecyclerAdapter(Context context, ArrayList<PlaylistInfo> playlist,
+                                          RecyclerViewOptionsListener recyclerViewPlaylistOptionsListener) {
         this.context = context;
-        this.playlist = playlist;
-        this.addButtonResId = addButtonResId;
-        this.itemClickedListener = itemClickedListener;
+        this.playlists = playlist;
+        this.recyclerViewPlaylistOptionsListener = recyclerViewPlaylistOptionsListener;
     }
 
     @NonNull
@@ -42,27 +40,27 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
         LayoutInflater inflater = LayoutInflater.from(this.context);
         if(viewType == ADD_ITEM_TOKEN) {
             View view = inflater.inflate(R.layout.single_line_item_add, parent, false);
-            return new ViewHolderAdd(view);
+            return new PlaylistOptionsRecyclerAdapter.ViewHolderAdd(view);
         }
         else {
             View view = inflater.inflate(R.layout.double_line_item, parent, false);
-            return new ViewHolderItem(view);
+            return new PlaylistOptionsRecyclerAdapter.ViewHolderItem(view);
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if(holder.getItemViewType() == ADD_ITEM_TOKEN) {
-            ViewHolderAdd viewHolder = (ViewHolderAdd) holder;
-            viewHolder.title.setText(this.addButtonResId);
+            PlaylistOptionsRecyclerAdapter.ViewHolderAdd viewHolder = (PlaylistOptionsRecyclerAdapter.ViewHolderAdd) holder;
+            viewHolder.title.setText(R.string.import_playlist_display);
         }
         else {
-            if(this.playlist.isEmpty()) {
+            if(this.playlists.isEmpty()) {
                 return;
             }
 
-            ViewHolderItem viewHolder = (ViewHolderItem) holder;
-            PlaylistInfo currentPlaylist = this.playlist.get(position - 1);
+            PlaylistOptionsRecyclerAdapter.ViewHolderItem viewHolder = (PlaylistOptionsRecyclerAdapter.ViewHolderItem) holder;
+            PlaylistInfo currentPlaylist = this.playlists.get(position - 1);
             viewHolder.title.setText(currentPlaylist.getTitle());
             viewHolder.other.setText(new String(" " + currentPlaylist.getAllVideos().size() + " songs"));
 
@@ -93,19 +91,23 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
         }
     }
 
-    public void ViewHolderClicked(int viewType, int position) {
-        this.itemClickedListener.onClicked(viewType,position - 1);
+    @Override
+    public int getItemCount() {
+        return this.playlists.size() + 1;
     }
 
     public void updateData(ArrayList<PlaylistInfo> playlist) {
-        this.playlist.clear();
-        this.playlist.addAll(playlist);
+        this.playlists.clear();
+        this.playlists.addAll(playlist);
         notifyDataSetChanged();
     }
 
-    @Override
-    public int getItemCount() {
-        return this.playlist.size() + 1;
+    public void SelectPopupMenuOption(int position, final int optionId) {
+        this.recyclerViewPlaylistOptionsListener.SelectMenuOption(position, optionId);
+    }
+
+    public void ViewHolderClicked(int viewType, int position) {
+        this.recyclerViewPlaylistOptionsListener.ButtonClicked(viewType,position - 1);
     }
 
     public class ViewHolderItem extends RecyclerView.ViewHolder {
@@ -113,6 +115,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
         public ImageView icon;
         public TextView title;
         public TextView other;
+        public ImageView options;
 
         public ViewHolderItem(@NonNull View itemView) {
             super(itemView);
@@ -120,6 +123,22 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
             this.icon = itemView.findViewById(R.id.imageView_item);
             this.title = itemView.findViewById(R.id.textView_item_title);
             this.other = itemView.findViewById(R.id.textView_item_other);
+            this.options = itemView.findViewById(R.id.imageView_item_options);
+
+            this.options.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    PopupMenu popupMenu = new PopupMenu(context, options);
+                    popupMenu.inflate(R.menu.playlist_item_options);
+                    popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                        @Override
+                        public boolean onMenuItemClick(MenuItem menuItem) {
+                            SelectPopupMenuOption(getLayoutPosition(), menuItem.getItemId());
+                            return true;
+                        }
+                    });
+                }
+            });
 
             //Make it clickable.
             itemView.setOnClickListener(new View.OnClickListener() {

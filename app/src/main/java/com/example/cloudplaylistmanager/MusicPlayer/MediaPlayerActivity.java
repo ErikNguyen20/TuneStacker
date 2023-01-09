@@ -44,12 +44,14 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 
 public class MediaPlayerActivity extends AppCompatActivity {
     public static final String SERIALIZE_TAG = "data";
     public static final String POSITION_TAG = "position";
+    public static final String SHUFFLED_TAG = "shuffle";
     private static final int NOTIFICATION_UPDATE_LIMITER = 4;
 
     private ImageView mediaPlayerIcon;
@@ -68,6 +70,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
     RecyclerView songRecyclerView;
     private SongsRecyclerAdapter songsAdapter;
     private int startingPosition;
+    private boolean shuffled;
     private int rateLimit = 0;
     private MusicService musicService = null;
     private MediaSessionCompat mediaSession;
@@ -90,11 +93,19 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
         //Receives the data that was sent to by the calling Activity.
         this.playlistInfo = (PlaylistInfo) getIntent().getSerializableExtra(SERIALIZE_TAG);
-        this.startingPosition = getIntent().getIntExtra(POSITION_TAG,0);
+        this.shuffled = getIntent().getBooleanExtra(SHUFFLED_TAG,false);
         if(this.playlistInfo == null || this.playlistInfo.getAllVideos() == null || this.playlistInfo.getAllVideos().isEmpty()) {
             this.finish();
             return;
         }
+        if(this.shuffled) {
+            Random ran = new Random();
+            this.startingPosition = ran.nextInt(this.playlistInfo.getAllVideos().size());
+        }
+        else {
+            this.startingPosition = getIntent().getIntExtra(POSITION_TAG,0);
+        }
+
 
         this.handler = new Handler();
         this.rateLimit = 0;
@@ -297,7 +308,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
 
         //Begin Playing the song.
-        this.musicService.BeginPlaying(this.startingPosition,true,true);
+        this.musicService.BeginPlaying(this.startingPosition,this.shuffled,true);
 
         //Updates the Seek Bar
         this.handler.postDelayed(new Runnable() {

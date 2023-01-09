@@ -70,6 +70,12 @@ public class DashboardFragment extends Fragment {
     }
 
     @Override
+    public void onStart() {
+        super.onStart();
+        //We can induce a refresh if needed
+    }
+
+    @Override
     public void onDestroyView() {
         super.onDestroyView();
         binding = null;
