@@ -26,6 +26,13 @@
     <string name="playlist_view_imports">Imports</string>
     <string name="playlist_view_playall">&#032;Play All</string>
     <string name="playlist_view_shuffleplay">&#032;Shuffle Play</string>
+    <string name="popup_create_new_title">Add New Song</string>
+    <string name="popup_enter_url">Enter URL:</string>
+    <string name="popup_enter_url_hint">https://example.com</string>
+    <string name="popup_or_display">or</string>
+    <string name="popup_select_file">Select File:</string>
+    <string name="popup_choose">Choose</string>
+    <string name="popup_download">&#032;Download</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_nested_playlist">NestedPlaylistActivity</string>

@@ -46,7 +46,7 @@
                     android:maxLines="1"
                     android:textColor="?attr/colorSecondary"
                     android:textStyle="bold"
-                    android:textSize="18sp"/>
+                    android:textSize="22sp"/>
 
                 <TextView
                     android:id="@+id/playlist_subtitle"
