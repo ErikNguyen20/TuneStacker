@@ -17,6 +17,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CloudPlaylistManager">
         <activity
+            android:name=".ui.playlistviewnormal.PlaylistImportActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.playlistviewnested.PlaylistNestedActivity"
             android:exported="false" />
         <activity

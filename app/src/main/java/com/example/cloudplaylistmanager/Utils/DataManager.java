@@ -41,6 +41,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
+import javax.annotation.Nullable;
+
 
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
@@ -140,12 +142,15 @@ public class DataManager {
         }
 
         //Populate the nested playlist with the imported values.
-        for(PlaylistInfo value : nestedPlaylists.values()) {
-            for(String key : value.GetImportedPlaylistKeys()) {
+        this.nestedPlaylistData = new HashMap<>();
+        for(Map.Entry<String, PlaylistInfo> entry : nestedPlaylists.entrySet()) {
+            PlaylistInfo playlist = entry.getValue();
+            for(String key : playlist.GetImportedPlaylistKeys()) {
                 if(this.importedPlaylistData.containsKey(key)) {
-                    value.ImportPlaylist(key, this.importedPlaylistData.get(key));
+                    playlist.ImportPlaylist(key, this.importedPlaylistData.get(key));
                 }
             }
+            this.nestedPlaylistData.put(entry.getKey(),playlist);
         }
 
         this.nestedPlaylistData = nestedPlaylists;
@@ -163,7 +168,13 @@ public class DataManager {
             imports = new HashMap<>();
         }
 
-        this.importedPlaylistData = imports;
+        this.importedPlaylistData = new HashMap<>();
+        for(Map.Entry<String, PlaylistInfo> entry : imports.entrySet()) {
+            PlaylistInfo playlist = entry.getValue();
+            playlist.UpdateAllVideos();
+            this.importedPlaylistData.put(entry.getKey(),playlist);
+        }
+
         this.dataLastUpdated = UUID.randomUUID().toString();
     }
 
@@ -181,12 +192,6 @@ public class DataManager {
         return PlaylistMapToArraylist(this.importedPlaylistData);
     }
 
-    public void RemovePlaylist(String key) {
-        this.nestedPlaylistData.remove(key);
-        this.importedPlaylistData.remove(key);
-        this.dataLastUpdated = UUID.randomUUID().toString();
-    }
-
     public PlaylistInfo GetPlaylistFromKey(String key) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
@@ -200,12 +205,30 @@ public class DataManager {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             playlist.setTitle(newName);
+            this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
             return;
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             playlist.setTitle(newName);
+            this.importedPlaylistData.put(key,playlist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+        }
+    }
+
+    public void UpdatePlaylistLastViewed(String key) {
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.updateLastViewed();
+            this.nestedPlaylistData.put(key,playlist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            return;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.updateLastViewed();
+            this.importedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
         }
     }
@@ -214,12 +237,42 @@ public class DataManager {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             playlist.AddVideoToPlaylist(audio);
+            this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
             return;
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             playlist.AddVideoToPlaylist(audio);
+            this.importedPlaylistData.put(key,playlist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+        }
+    }
+
+    public void RemovePlaylist(String key, @Nullable String parentKey) {
+        if(parentKey != null) {
+            PlaylistInfo playlist = this.nestedPlaylistData.get(parentKey);
+            if(playlist != null) {
+                playlist.RemoveImportedPlaylist(key);
+                this.nestedPlaylistData.put(parentKey,playlist);
+                this.dataLastUpdated = UUID.randomUUID().toString();
+            }
+        }
+        else {
+            PlaylistInfo removedPlaylist = this.nestedPlaylistData.remove(key);
+            if(removedPlaylist == null) {
+                return;
+            }
+            removedPlaylist = this.importedPlaylistData.remove(key);
+            if(removedPlaylist == null) {
+                return;
+            }
+            //Remove from all other nesetdplaylists (Iterate through them all)
+            for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
+                PlaylistInfo value = entry.getValue();
+                value.RemoveImportedPlaylist(key);
+                this.nestedPlaylistData.put(entry.getKey(), value);
+            }
             this.dataLastUpdated = UUID.randomUUID().toString();
         }
     }

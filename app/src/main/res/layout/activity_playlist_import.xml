@@ -55,6 +55,15 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp" />
 
+                <TextView
+                    android:id="@+id/playlist_source"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="24dp"
+                    android:textColor="?attr/colorPrimary"
+                    android:ellipsize="end"
+                    android:maxLines="1"/>
+
 
             </LinearLayout>
         </LinearLayout>
@@ -101,29 +110,32 @@
 
         </LinearLayout>
 
-        <com.google.android.material.tabs.TabLayout
-            android:id="@+id/tabLayout"
+        <TextView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"
+            android:background="@android:color/transparent"
+            android:textAlignment="center"
+            android:textColor="?attr/colorPrimary"
+            android:textStyle="bold"
+            android:textSize="16sp"
+            android:text="@string/playlist_view_allsongs"
+            android:maxLines="1" />
 
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/playlist_view_allsongs" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_marginBottom="4dp"
+            android:background="?attr/colorPrimary" />
 
-            <com.google.android.material.tabs.TabItem
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/playlist_view_imports" />
-
-        </com.google.android.material.tabs.TabLayout>
-
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/viewPager"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView_allSongs"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="2dp"
             android:background="?attr/colorOnSecondary" />
+
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -25,13 +25,15 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
 
     private Context context;
     private ArrayList<PlaybackAudioInfo> audios;
-    RecyclerViewOptionsListener recyclerViewSongsOptionsListener;
+    private boolean addButtonIncluded;
+    private RecyclerViewOptionsListener recyclerViewSongsOptionsListener;
 
-    public SongsOptionsRecyclerAdapter(Context context, PlaylistInfo playlist,
+    public SongsOptionsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded,
                                        RecyclerViewOptionsListener recyclerViewSongsOptionsListener) {
         this.context = context;
         this.audios = new ArrayList<>();
         this.audios.addAll(playlist.getAllVideos());
+        this.addButtonIncluded = addButtonIncluded;
         this.recyclerViewSongsOptionsListener = recyclerViewSongsOptionsListener;
     }
 
@@ -62,7 +64,7 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
             SongsOptionsRecyclerAdapter.ViewHolderItem viewHolder = (SongsOptionsRecyclerAdapter.ViewHolderItem) holder;
 
             //Populate the view with information on the UI.
-            PlaybackAudioInfo audio = this.audios.get(position);
+            PlaybackAudioInfo audio = this.audios.get(this.addButtonIncluded ? position - 1 : position);
 
             viewHolder.title.setText(audio.getTitle());
             if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
@@ -78,16 +80,16 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
 
     @Override
     public int getItemCount() {
-        return this.audios.size() + 1;
+        return this.addButtonIncluded ? this.audios.size() + 1 : this.audios.size();
     }
 
     @Override
     public int getItemViewType(int position) {
-        if(position == 0) {
+        if(this.addButtonIncluded && position == 0) {
             return ADD_ITEM_TOKEN;
         }
         else {
-            return super.getItemViewType(position - 1);
+            return super.getItemViewType(position);
         }
     }
 
@@ -102,7 +104,7 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     public void ButtonClicked(int viewType, int position) {
-        this.recyclerViewSongsOptionsListener.ButtonClicked(viewType, position - 1);
+        this.recyclerViewSongsOptionsListener.ButtonClicked(viewType, this.addButtonIncluded ? position - 1 : position);
     }
 
     public class ViewHolderItem extends RecyclerView.ViewHolder {

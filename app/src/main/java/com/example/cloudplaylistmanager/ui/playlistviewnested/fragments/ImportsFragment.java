@@ -27,6 +27,7 @@ import java.util.ArrayList;
 public class ImportsFragment extends Fragment {
 
     private ArrayList<Pair<String, PlaylistInfo>> playlists;
+    private String parentUuidKey;
     private PlaylistOptionsRecyclerAdapter adapter;
 
     public ImportsFragment() {
@@ -61,16 +62,17 @@ public class ImportsFragment extends Fragment {
 
         //Fetches data from the ViewModel.
         PlaylistNestedViewModel viewModel = new ViewModelProvider(requireActivity()).get(PlaylistNestedViewModel.class);
-        viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
+        viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<Pair<String, PlaylistInfo>>() {
             @Override
-            public void onChanged(PlaylistInfo playlistInfo) {
-                if(playlistInfo == null) {
+            public void onChanged(Pair<String, PlaylistInfo> stringPlaylistInfoPair) {
+                if(stringPlaylistInfoPair == null) {
                     return;
                 }
-                playlists = playlistInfo.GetImportedPlaylists();
+                playlists = stringPlaylistInfoPair.second.GetImportedPlaylists();
+                parentUuidKey = stringPlaylistInfoPair.first;
 
                 ArrayList<PlaylistInfo> data = new ArrayList<>();
-                for(Pair<String, PlaylistInfo> value : playlistInfo.GetImportedPlaylists()) {
+                for(Pair<String, PlaylistInfo> value : stringPlaylistInfoPair.second.GetImportedPlaylists()) {
                     data.add(value.second);
                 }
                 adapter.updateData(data);

@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,7 +43,7 @@ public class AllSongsFragment extends Fragment {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        this.adapter = new SongsOptionsRecyclerAdapter(getContext(), this.playlist, new RecyclerViewOptionsListener() {
+        this.adapter = new SongsOptionsRecyclerAdapter(getContext(), this.playlist, true, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId) {
 
@@ -63,14 +64,14 @@ public class AllSongsFragment extends Fragment {
 
         //Fetches data from the ViewModel.
         PlaylistNestedViewModel viewModel = new ViewModelProvider(requireActivity()).get(PlaylistNestedViewModel.class);
-        viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
+        viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<Pair<String, PlaylistInfo>>() {
             @Override
-            public void onChanged(PlaylistInfo playlistInfo) {
-                if(playlistInfo == null) {
+            public void onChanged(Pair<String, PlaylistInfo> stringPlaylistInfoPair) {
+                if(stringPlaylistInfoPair == null) {
                     return;
                 }
-                playlist = playlistInfo;
-                adapter.updateData(playlistInfo);
+                playlist = stringPlaylistInfoPair.second;
+                adapter.updateData(stringPlaylistInfoPair.second);
             }
         });
 

@@ -34,7 +34,7 @@ public class PlaylistInfo implements Serializable {
         this.title = "Unnamed Playlist";
     }
 
-    private void UpdateAllVideos() {
+    public void UpdateAllVideos() {
         this.allVideos.clear();
         this.allVideos.addAll(this.insertedVideos);
         for(Pair<String, PlaylistInfo> pair : importedPlaylists) {
@@ -87,6 +87,16 @@ public class PlaylistInfo implements Serializable {
 
     public ArrayList<Pair<String, PlaylistInfo>> GetImportedPlaylists() {
         return this.importedPlaylists;
+    }
+
+    public void RemoveImportedPlaylist(String key) {
+        this.importedPlaylistsKeys.remove(key);
+        for(int index = 0; index < this.importedPlaylists.size(); index++) {
+            if(this.importedPlaylists.get(index).first.equals(key)) {
+                this.importedPlaylists.remove(index);
+                break;
+            }
+        }
     }
 
     public ArrayList<String> GetImportedPlaylistKeys() {

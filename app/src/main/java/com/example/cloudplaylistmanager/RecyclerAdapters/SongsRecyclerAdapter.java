@@ -27,14 +27,6 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
     boolean addButtonIncluded;
     RecyclerViewItemClickedListener itemClickedListener;
 
-    public SongsRecyclerAdapter(Context context, ArrayList<PlaybackAudioInfo> allSongs, boolean addButtonIncluded,
-                                RecyclerViewItemClickedListener itemClickedListener) {
-        this.context = context;
-        this.audios = allSongs;
-        this.addButtonIncluded = addButtonIncluded;
-        this.itemClickedListener = itemClickedListener;
-    }
-
     public SongsRecyclerAdapter(Context context, PlaylistInfo playlist, boolean addButtonIncluded,
                                 RecyclerViewItemClickedListener itemClickedListener) {
         this.context = context;
@@ -91,7 +83,7 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
             return ADD_ITEM_TOKEN;
         }
         else {
-            return super.getItemViewType(position - 1);
+            return super.getItemViewType(position);
         }
     }
 

@@ -150,7 +150,7 @@ public class SavedSongsFragment extends Fragment {
         TextView chooseButton = dialog.findViewById(R.id.textView_choose_file);
         TextView fileName = dialog.findViewById(R.id.textView_file_name);
         EditText urlField = dialog.findViewById(R.id.edit_text_url);
-        this.selectedFile.setValue(null);
+        this.selectedFile.postValue(null);
 
         getUriResult().observe(this, new Observer<Uri>() {
             public void onChanged(Uri uri) {

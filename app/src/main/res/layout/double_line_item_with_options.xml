@@ -40,6 +40,7 @@
                 android:textStyle="bold"
                 android:gravity="center_vertical"
                 android:maxLines="1"
+                android:ellipsize="end"
                 android:textSize="16sp" />
 
             <TextView
@@ -51,6 +52,7 @@
                 android:textColor="?attr/colorSecondaryVariant"
                 android:gravity="center_vertical"
                 android:maxLines="1"
+                android:ellipsize="end"
                 android:textSize="12sp" />
 
         </LinearLayout>

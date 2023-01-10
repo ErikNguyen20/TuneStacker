@@ -55,8 +55,9 @@ public class DashboardViewModel extends ViewModel {
     }
 
     public void updateData() {
+        String recentUpdate = DataManager.getInstance().GetDataLastUpdate();
         if(this.lastUpdate.getValue() == null ||
-                !DataManager.getInstance().GetDataLastUpdate().equals(this.lastUpdate.getValue())) {
+                !recentUpdate.equals(this.lastUpdate.getValue())) {
 
             /*
             ArrayList<Pair<String,PlaylistInfo>> fetchedImportsPlaylist = DataManager.getInstance().GetImportedPlaylists();
@@ -76,7 +77,7 @@ public class DashboardViewModel extends ViewModel {
                 this.localVideos.postValue(fetchedSavedSongs);
             }
 
-            this.lastUpdate.postValue(DataManager.getInstance().GetDataLastUpdate());
+            this.lastUpdate.postValue(recentUpdate);
         }
     }
 }

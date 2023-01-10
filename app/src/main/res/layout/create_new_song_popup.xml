@@ -95,6 +95,7 @@
                 android:maxLines="1"
                 android:textSize="11sp"
                 android:textStyle="italic"
+                android:ellipsize="end"
                 android:textAlignment="center" />
 
             <TextView
