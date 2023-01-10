@@ -20,12 +20,14 @@ import android.widget.TextView;
 
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.google.android.material.tabs.TabLayout;
 
 public class PlaylistNestedActivity extends AppCompatActivity {
     public static final String SERIALIZE_TAG = "playlist_data";
+    public static final String UUID_KEY_TAG = "playlist_uuid";
 
     private ImageView icon;
     private TextView title;
@@ -38,6 +40,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
 
     private PlaylistNestedViewModel playlistNestedViewModel;
     private PlaylistInfo playlistInfo;
+    private String uuidKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,6 +56,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         }
 
         this.playlistInfo = (PlaylistInfo) getIntent().getSerializableExtra(SERIALIZE_TAG);
+        this.uuidKey = getIntent().getStringExtra(UUID_KEY_TAG);
         if(this.playlistInfo == null) {
             this.finish();
             return;
@@ -66,17 +70,8 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         this.viewPager2 = findViewById(R.id.viewPager);
         this.tabLayout = findViewById(R.id.tabLayout);
 
-        this.title.setText(this.playlistInfo.getTitle());
-        this.subtitle.setText(new String(" " + this.playlistInfo.getAllVideos().size() + " songs"));
-        if(!this.playlistInfo.getAllVideos().isEmpty()) {
-            PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
-            if(sourceAudio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-                Bitmap bitmap = BitmapFactory.decodeFile(sourceAudio.getThumbnailSource());
-                if (bitmap != null) {
-                    this.icon.setImageBitmap(bitmap);
-                }
-            }
-        }
+        UpdateUI();
+
         this.playAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -103,7 +98,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
 
 
         this.playlistNestedViewModel = new ViewModelProvider(this).get(PlaylistNestedViewModel.class);
-        this.playlistNestedViewModel.setPlaylistData(this.playlistInfo);
+        this.playlistNestedViewModel.updateData(this.uuidKey);
 
         this.adapter = new PlaylistNestedViewPagerAdapter(getSupportFragmentManager(),getLifecycle());
         this.viewPager2.setAdapter(this.adapter);
@@ -133,8 +128,26 @@ public class PlaylistNestedActivity extends AppCompatActivity {
             @Override
             public void onChanged(PlaylistInfo playlist) {
                 playlistInfo = playlist;
+                UpdateUI();
             }
         });
+    }
+
+    public void UpdateUI() {
+        if(this.playlistInfo == null) {
+            return;
+        }
+        this.title.setText(this.playlistInfo.getTitle());
+        this.subtitle.setText(new String(" " + this.playlistInfo.getAllVideos().size() + " songs"));
+        if(!this.playlistInfo.getAllVideos().isEmpty()) {
+            PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
+            if(sourceAudio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
+                Bitmap bitmap = BitmapFactory.decodeFile(sourceAudio.getThumbnailSource());
+                if (bitmap != null) {
+                    this.icon.setImageBitmap(bitmap);
+                }
+            }
+        }
     }
 
     @Override
@@ -148,7 +161,8 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         if (id == android.R.id.home) {
             this.finish();
         } else if(id == R.id.rename_option) {
-
+            //DataManager.getInstance().RenamePlaylist(this.uuidKey,"NewName");
+            this.playlistNestedViewModel.updateData(this.uuidKey);
         } else if(id == R.id.export_option) {
 
         } else if(id == R.id.sync_option) {
@@ -156,10 +170,17 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         } else if(id == R.id.backup_option) {
 
         } else if(id == R.id.delete_option) {
-
+            //DataManager.getInstance().RemovePlaylist(this.uuidKey);
+            this.finish();
         } else {
             return super.onOptionsItemSelected(item);
         }
         return true;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        this.playlistNestedViewModel.updateData(this.uuidKey);
     }
 }

@@ -4,6 +4,8 @@ package com.example.cloudplaylistmanager.Utils;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.gson.annotations.Expose;
+
 import java.io.Serializable;
 
 public class PlaybackAudioInfo implements Serializable {
@@ -16,14 +18,20 @@ public class PlaybackAudioInfo implements Serializable {
         UNKNOWN
     }
 
-
+    @Expose
     private String title;
+    @Expose
     private String author;
+    @Expose
     private String origin;
+    @Expose
     private PlaybackMediaType audioType;
-    private String audioSource; /** Path or URL depending on PlaybackMediaType */
+    @Expose
+    private String audioSource;
+    @Expose
     private PlaybackMediaType thumbnailType;
-    private String thumbnailSource; /** Path or URL depending on PlaybackMediaType */
+    @Expose
+    private String thumbnailSource;
 
 
     public PlaybackAudioInfo() {

@@ -18,6 +18,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter;
 import androidx.viewpager2.widget.ViewPager2;
 
 import com.example.cloudplaylistmanager.R;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.databinding.FragmentDashboardBinding;
 import com.google.android.material.tabs.TabLayout;
@@ -33,10 +34,10 @@ public class DashboardFragment extends Fragment {
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
+        this.dashboardViewModel = new ViewModelProvider(this).get(DashboardViewModel.class);
 
-        binding = FragmentDashboardBinding.inflate(inflater, container, false);
-        View root = binding.getRoot();
+        this.binding = FragmentDashboardBinding.inflate(inflater, container, false);
+        View root = this.binding.getRoot();
 
 
         //Binds the children fragments onto the viewpager & adapter.
@@ -72,7 +73,8 @@ public class DashboardFragment extends Fragment {
     @Override
     public void onStart() {
         super.onStart();
-        //We can induce a refresh if needed
+        //Induce an update.
+        this.dashboardViewModel.updateData();
     }
 
     @Override

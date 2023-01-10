@@ -72,14 +72,14 @@ public class MusicService extends Service implements
      * @param repeat True = Music Player will repeat the playlist after it is finished.
      */
     public void BeginPlaying(int startPos, boolean shuffle, boolean repeat) {
-        this.songCounter = startPos - 1;
+        this.songCounter = startPos;
         this.isShuffle = shuffle;
         this.isRepeat = repeat;
 
         if(!this.wifiLock.isHeld()) {
             this.wifiLock.acquire();
         }
-        NextSong(NEXT_SONG_IGNORED);
+        NextSong(startPos);
     }
 
 

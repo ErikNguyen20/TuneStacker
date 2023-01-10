@@ -18,6 +18,7 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
+
 import java.util.ArrayList;
 
 public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
@@ -31,7 +32,12 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
     public PlaylistRecyclerAdapter(Context context, ArrayList<PlaylistInfo> playlist, @StringRes int addButtonResId,
                                    RecyclerViewItemClickedListener itemClickedListener) {
         this.context = context;
-        this.playlist = playlist;
+        if(playlist == null) {
+            this.playlist = new ArrayList<>();
+        }
+        else {
+            this.playlist = playlist;
+        }
         this.addButtonResId = addButtonResId;
         this.itemClickedListener = itemClickedListener;
     }

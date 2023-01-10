@@ -4,30 +4,41 @@ import android.os.Parcel;
 import android.os.Parcelable;
 import android.util.Pair;
 
+import com.google.gson.annotations.Expose;
+
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 
 public class PlaylistInfo implements Serializable {
+    @Expose
     private String title;
+    @Expose
     private String linkSource;
+    @Expose
+    private long lastViewed;
+    @Expose
     private ArrayList<PlaybackAudioInfo> insertedVideos;
-    private ArrayList<PlaylistInfo> importedPlaylists;
+    private ArrayList<Pair<String, PlaylistInfo>> importedPlaylists;
+    @Expose
+    private ArrayList<String> importedPlaylistsKeys;
     private LinkedHashSet<PlaybackAudioInfo> allVideos;
 
     public PlaylistInfo() {
         this.insertedVideos = new ArrayList<>();
         this.allVideos = new LinkedHashSet<>();
         this.importedPlaylists = new ArrayList<>();
+        this.importedPlaylistsKeys = new ArrayList<>();
         this.linkSource = null;
+        this.lastViewed = 0;
         this.title = "Unnamed Playlist";
     }
 
     private void UpdateAllVideos() {
         this.allVideos.clear();
         this.allVideos.addAll(this.insertedVideos);
-        for(PlaylistInfo playlist : importedPlaylists) {
-            this.allVideos.addAll(playlist.getAllVideos());
+        for(Pair<String, PlaylistInfo> pair : importedPlaylists) {
+            this.allVideos.addAll(pair.second.getAllVideos());
         }
     }
 
@@ -37,6 +48,14 @@ public class PlaylistInfo implements Serializable {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public long getLastViewed() {
+        return this.lastViewed;
+    }
+
+    public void updateLastViewed() {
+        this.lastViewed = System.currentTimeMillis();
     }
 
     public String getLinkSource() {
@@ -60,13 +79,18 @@ public class PlaylistInfo implements Serializable {
         this.allVideos.add(video);
     }
 
-    public void ImportPlaylist(PlaylistInfo other) {
-        this.importedPlaylists.add(other);
+    public void ImportPlaylist(String key, PlaylistInfo other) {
+        this.importedPlaylists.add(new Pair<>(key, other));
+        this.importedPlaylistsKeys.add(key);
         UpdateAllVideos();
     }
 
-    public ArrayList<PlaylistInfo> GetImportedPlaylists() {
+    public ArrayList<Pair<String, PlaylistInfo>> GetImportedPlaylists() {
         return this.importedPlaylists;
+    }
+
+    public ArrayList<String> GetImportedPlaylistKeys() {
+        return this.importedPlaylistsKeys;
     }
 
     public void MergePlaylists(PlaylistInfo other) {

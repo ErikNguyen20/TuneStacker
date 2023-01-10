@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -25,7 +26,7 @@ import java.util.ArrayList;
  */
 public class ImportsFragment extends Fragment {
 
-    private ArrayList<PlaylistInfo> playlists;
+    private ArrayList<Pair<String, PlaylistInfo>> playlists;
     private PlaylistOptionsRecyclerAdapter adapter;
 
     public ImportsFragment() {
@@ -43,7 +44,7 @@ public class ImportsFragment extends Fragment {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        this.adapter = new PlaylistOptionsRecyclerAdapter(getContext(), this.playlists, new RecyclerViewOptionsListener() {
+        this.adapter = new PlaylistOptionsRecyclerAdapter(getContext(), null, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId) {
 
@@ -63,8 +64,16 @@ public class ImportsFragment extends Fragment {
         viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
             @Override
             public void onChanged(PlaylistInfo playlistInfo) {
+                if(playlistInfo == null) {
+                    return;
+                }
                 playlists = playlistInfo.GetImportedPlaylists();
-                adapter.updateData(playlistInfo.GetImportedPlaylists());
+
+                ArrayList<PlaylistInfo> data = new ArrayList<>();
+                for(Pair<String, PlaylistInfo> value : playlistInfo.GetImportedPlaylists()) {
+                    data.add(value.second);
+                }
+                adapter.updateData(data);
             }
         });
 

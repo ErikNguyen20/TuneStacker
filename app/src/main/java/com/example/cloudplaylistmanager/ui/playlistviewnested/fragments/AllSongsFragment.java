@@ -66,6 +66,9 @@ public class AllSongsFragment extends Fragment {
         viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<PlaylistInfo>() {
             @Override
             public void onChanged(PlaylistInfo playlistInfo) {
+                if(playlistInfo == null) {
+                    return;
+                }
                 playlist = playlistInfo;
                 adapter.updateData(playlistInfo);
             }

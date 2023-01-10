@@ -1,6 +1,7 @@
 package com.example.cloudplaylistmanager.ui.dashboard;
 
 import android.util.Log;
+import android.util.Pair;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
@@ -13,37 +14,39 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import org.checkerframework.checker.units.qual.A;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class DashboardViewModel extends ViewModel {
 
-    private MutableLiveData<ArrayList<PlaylistInfo>> myPlaylists;
-    private MutableLiveData<ArrayList<PlaylistInfo>> importedPlaylists;
+    private MutableLiveData<ArrayList<Pair<String,PlaylistInfo>>> myPlaylists;
+    private MutableLiveData<ArrayList<Pair<String,PlaylistInfo>>> importedPlaylists;
     private MutableLiveData<PlaylistInfo> localVideos;
+
+    private MutableLiveData<String> lastUpdate;
 
     public DashboardViewModel() {
         this.myPlaylists = new MutableLiveData<>();
         this.importedPlaylists = new MutableLiveData<>();
         this.localVideos = new MutableLiveData<>();
 
-        //We will initialize this data in this constructor.
-        ArrayList<PlaylistInfo> test = new ArrayList<>();
+        this.lastUpdate = new MutableLiveData<>();
+        this.lastUpdate.postValue(null);
+
+        //We will initialize this data in this constructor. (TEST VALUES)
+        ArrayList<Pair<String,PlaylistInfo>> test = new ArrayList<>();
         PlaylistInfo testItem = new PlaylistInfo();
         testItem.setTitle("Test LOL");
-        test.add(testItem);
-        this.myPlaylists.setValue(test);
+        test.add(new Pair<>("lmao",testItem));
+        this.myPlaylists.postValue(test);
 
-        PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
-        if(fetchedSavedSongs != null) {
-            fetchedSavedSongs.setTitle("Saved Songs");
-            this.localVideos.setValue(fetchedSavedSongs);
-        }
+        updateData();
     }
 
-    public LiveData<ArrayList<PlaylistInfo>> getMyPlaylists() {
+    public LiveData<ArrayList<Pair<String,PlaylistInfo>>> getMyPlaylists() {
         return this.myPlaylists;
     }
 
-    public LiveData<ArrayList<PlaylistInfo>> getImportedPlaylists() {
+    public LiveData<ArrayList<Pair<String,PlaylistInfo>>> getImportedPlaylists() {
         return this.importedPlaylists;
     }
 
@@ -51,15 +54,29 @@ public class DashboardViewModel extends ViewModel {
         return this.localVideos;
     }
 
-    public void updateMyPlaylists() {
+    public void updateData() {
+        if(this.lastUpdate.getValue() == null ||
+                !DataManager.getInstance().GetDataLastUpdate().equals(this.lastUpdate.getValue())) {
 
-    }
+            /*
+            ArrayList<Pair<String,PlaylistInfo>> fetchedImportsPlaylist = DataManager.getInstance().GetImportedPlaylists();
+            if(fetchedImportsPlaylist != null) {
+                this.importedPlaylists.setValue(fetchedImportsPlaylist);
+            }
 
-    public void updateImportedPlaylists() {
+            ArrayList<Pair<String,PlaylistInfo>> fetchedMyPlaylists = DataManager.getInstance().GetNestedPlaylists();
+            if(fetchedMyPlaylists != null) {
+                this.myPlaylists.setValue(fetchedMyPlaylists);
+            }
+            */
 
-    }
+            PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
+            if(fetchedSavedSongs != null) {
+                fetchedSavedSongs.setTitle("Saved Songs");
+                this.localVideos.postValue(fetchedSavedSongs);
+            }
 
-    public void updateLocalVideos() {
-
+            this.lastUpdate.postValue(DataManager.getInstance().GetDataLastUpdate());
+        }
     }
 }

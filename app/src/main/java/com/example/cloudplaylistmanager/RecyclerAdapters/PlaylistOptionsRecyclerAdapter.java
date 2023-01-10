@@ -30,7 +30,12 @@ public class PlaylistOptionsRecyclerAdapter extends RecyclerView.Adapter<Recycle
     public PlaylistOptionsRecyclerAdapter(Context context, ArrayList<PlaylistInfo> playlist,
                                           RecyclerViewOptionsListener recyclerViewPlaylistOptionsListener) {
         this.context = context;
-        this.playlists = playlist;
+        if(playlist == null) {
+            this.playlists = new ArrayList<>();
+        }
+        else {
+            this.playlists = playlist;
+        }
         this.recyclerViewPlaylistOptionsListener = recyclerViewPlaylistOptionsListener;
     }
 

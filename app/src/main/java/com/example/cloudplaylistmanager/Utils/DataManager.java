@@ -1,6 +1,11 @@
 package com.example.cloudplaylistmanager.Utils;
 
+import android.content.ContentResolver;
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.OpenableColumns;
 import android.util.Log;
 import android.util.Pair;
 
@@ -9,10 +14,10 @@ import com.androidnetworking.common.ANRequest;
 import com.androidnetworking.common.ANResponse;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
-import com.androidnetworking.interfaces.DownloadListener;
 import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.storage.StorageReference;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 import com.yausername.ffmpeg.FFmpeg;
 import com.yausername.youtubedl_android.YoutubeDL;
 import com.yausername.youtubedl_android.YoutubeDLException;
@@ -24,10 +29,14 @@ import com.yausername.youtubedl_android.mapper.VideoInfo;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -35,6 +44,8 @@ import java.util.concurrent.CountDownLatch;
 
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
+    private static final String SAVED_PREFERENCES_NESTED_TAG = "nested";
+    private static final String SAVED_PREFERENCES_IMPORT_TAG = "import";
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
     private static final String LOCAL_DIRECTORY_CACHE = "cache";
@@ -53,18 +64,31 @@ public class DataManager {
     private File appMusicDirectory;
     private File appCacheDirectory;
     private File appImageDirectory;
+    private SharedPreferences sharedPreferences;
+    private ContentResolver contentResolver;
+
+    private String dataLastUpdated;
+    private HashMap<String, PlaylistInfo> nestedPlaylistData;  //key is UUID
+    private HashMap<String, PlaylistInfo> importedPlaylistData;//key is UUID
 
 
     private DataManager(Context context) {
         this.YtUtilities = new YoutubeUtilities(context);
         AndroidNetworking.initialize(context);
         try {
-            YoutubeDL.getInstance().init(context);
-            FFmpeg.getInstance().init(context);
             this.appMusicDirectory = GetLocalMusicDirectory(context);
             this.appImageDirectory = GetLocalImageDirectory(context);
             this.appCacheDirectory = GetLocalCacheDirectory(context);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
+            this.contentResolver = context.getContentResolver();
+
+            YoutubeDL.getInstance().init(context);
+            FFmpeg.getInstance().init(context);
             this.downloaderInitialized = true;
+
+            LoadImportedPlaylistsData();
+            LoadNestedPlaylistsData();
         } catch(YoutubeDLException e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             this.downloaderInitialized = false;
@@ -91,159 +115,140 @@ public class DataManager {
         return instance;
     }
 
-    /**
-     * Uploads song with the given audio information
-     * It is required to implement {@link UploadToCloudListener} to obtain the
-     * result of this call and to catch potential errors.
-     * @param audio Audio information that will be uploaded.
-     * @param uploadToCloudListener Listener used to get the results/errors of this call.
-     */
-    public void UploadAudioToCloud(PlaybackAudioInfo audio, UploadToCloudListener uploadToCloudListener) {
-        Thread thread = new Thread(() -> {
-            FirebaseManager firebase = FirebaseManager.getInstance();
-            String uniqueID = UUID.randomUUID().toString();
-            //Checks to see if the song already exists as metadata in the database.
-            Pair<DocumentReference,Boolean> existPath = firebase.FindExistingSongInDatabase(audio.getTitle(),audio.getOrigin());
-            if(existPath != null && existPath.second) {
-                uploadToCloudListener.onError("Audio already exists on the cloud.");
-                return;
-            }
 
-            //Fetches/Downloads and uploads the thumbnail.
-            File thumbnailFile = null;
-            switch(audio.getThumbnailType()) {
-                case STREAM:
-                    thumbnailFile = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle());
-                    break;
-                case LOCAL:
-                    thumbnailFile = new File(audio.getThumbnailSource());
-                    if(!thumbnailFile.exists())
-                    {
-                        thumbnailFile = null;
-                    }
-            }
-            //Uploads the thumbnail to the cloud.
-            String thumbnailUrl;
-            if(thumbnailFile != null) {
-                final CountDownLatch latch = new CountDownLatch(1);
-                StringBuilder thumbnailUrlBuilder = new StringBuilder();
-                StorageReference reference = firebase.GetStorageReferenceToThumbnails().child(audio.getTitle() + '_' + uniqueID);
-                firebase.UploadToFirebase(thumbnailFile, reference, new UploadListener() {
-                    @Override
-                    public void onComplete(String downloadUrl) {
-                        thumbnailUrlBuilder.append(downloadUrl);
-                        latch.countDown();
-                    }
+    public void SaveData() {
+        SharedPreferences.Editor editor = this.sharedPreferences.edit();
 
-                    @Override
-                    public void onError(int errorCode, String message) {
-                        latch.countDown();
-                    }
-                });
-                try {
-                    latch.await();
-                } catch (InterruptedException e) {
-                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
-                    e.printStackTrace();
-                }
-                if (!thumbnailUrlBuilder.toString().isEmpty()) {
-                    thumbnailUrl = thumbnailUrlBuilder.toString();
-                }
-                else {
-                    thumbnailUrl = FirebaseManager.DEFAULT_THUMBNAIL_SOURCE;
-                }
-                audio.setThumbnailSource(thumbnailUrl);
-            }
-            else {
-                audio.setThumbnailSource(FirebaseManager.DEFAULT_THUMBNAIL_SOURCE);
-            }
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
+        String jsonNestedResult = gson.toJson(this.nestedPlaylistData);
+        String jsonImportResult = gson.toJson(this.importedPlaylistData);
 
-            //Fetches/Downloads and uploads the audio.
-            File audioFile = null;
-            switch(audio.getAudioType()) {
-                case STREAM:
-                    audioFile = DownloadToLocalStorage(audio.getAudioSource(), this.appImageDirectory, audio.getTitle()+ '_' + uniqueID);
-                    break;
-                case LOCAL:
-                    audioFile = new File(audio.getAudioSource());
-                    if(!audioFile.exists())
-                    {
-                        audioFile = null;
-                    }
-                    break;
-                default:
-                    uploadToCloudListener.onError("Audio Source is Invalid.");
-                    return;
-            }
-            //Uploads the audio to the cloud.
-            if(audioFile != null) {
-                //Uploads to Firebase cloud storage. Can specify another location if wanted.
-                final CountDownLatch latch = new CountDownLatch(1);
-                StringBuilder audioUrlBuilder = new StringBuilder();
-                StorageReference reference = firebase.GetStorageReferenceToAudio().child(audio.getTitle() + '_' + UUID.randomUUID().toString());
-                firebase.UploadToFirebase(audioFile, reference, new UploadListener() {
-                    @Override
-                    public void onComplete(String downloadUrl) {
-                        audioUrlBuilder.append(downloadUrl);
-                        latch.countDown();
-                    }
+        editor.putString(SAVED_PREFERENCES_NESTED_TAG,jsonNestedResult);
+        editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
+        editor.apply();
+    }
 
-                    @Override
-                    public void onError(int errorCode, String message) {
-                        uploadToCloudListener.onError(message);
-                        Log.e(LOG_TAG, message);
-                        latch.countDown();
-                    }
-                });
-                try {
-                    latch.await();
-                } catch (InterruptedException e) {
-                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "Latch was interrupted.");
-                    e.printStackTrace();
-                }
-                if (!audioUrlBuilder.toString().isEmpty()) {
-                    audio.setAudioSource(audioUrlBuilder.toString());
-                }
-                else {
-                    audio.setAudioSource(null);
+    private void LoadNestedPlaylistsData() {
+        //Imports playlist data must be fetched first.
+        Gson gson = new Gson();
+        String json = this.sharedPreferences.getString(SAVED_PREFERENCES_NESTED_TAG,"");
+        Type nestedPlaylistsType = new TypeToken<HashMap<String, PlaylistInfo>>(){}.getType();
+
+        HashMap<String, PlaylistInfo> nestedPlaylists = gson.fromJson(json,nestedPlaylistsType);
+        if(nestedPlaylists == null) {
+            nestedPlaylists = new HashMap<>();
+        }
+
+        //Populate the nested playlist with the imported values.
+        for(PlaylistInfo value : nestedPlaylists.values()) {
+            for(String key : value.GetImportedPlaylistKeys()) {
+                if(this.importedPlaylistData.containsKey(key)) {
+                    value.ImportPlaylist(key, this.importedPlaylistData.get(key));
                 }
             }
-            else {
-                uploadToCloudListener.onError("Audio File not Found / Failed to download.");
-                Log.e(LOG_TAG, "Audio File not Found / Failed to download.");
-            }
+        }
 
-            //Updates or Adds the new song's metadata.
-            if(existPath == null) {
-                //External parameter is null because the cloud source is Firebase. We will specify
-                //a parameter if it is stored in some external cloud storage.
-                DocumentReference songMetadata = firebase.CreateNewSongMetadata(audio,null);
-                uploadToCloudListener.onComplete(songMetadata.getPath());
-                Log.d(LOG_TAG, "Created new Song Metadata.");
-            }
-            else {
-                //Metadata should also be updated to include the "external" field if the source is on
-                //on external cloud storage.
-                firebase.UpdateExistingSongAudioUrl(existPath.first.getPath(),audio.getAudioSource());
-                firebase.UpdateExistingSongThumbnailUrl(existPath.first.getPath(),audio.getThumbnailSource());
-                uploadToCloudListener.onComplete(existPath.first.getPath());
-                Log.d(LOG_TAG, "Updated Song Metadata.");
-            }
-        });
+        this.nestedPlaylistData = nestedPlaylists;
+        this.dataLastUpdated = UUID.randomUUID().toString();
+    }
 
-        thread.start();
+    private void LoadImportedPlaylistsData() {
+        //Gets imported playlist through gson and shared preferences.
+        Gson gson = new Gson();
+        String json = this.sharedPreferences.getString(SAVED_PREFERENCES_IMPORT_TAG,"");
+        Type importPlaylistsType = new TypeToken<HashMap<String, PlaylistInfo>>(){}.getType();
+
+        HashMap<String, PlaylistInfo> imports = gson.fromJson(json, importPlaylistsType);
+        if(imports == null) {
+            imports = new HashMap<>();
+        }
+
+        this.importedPlaylistData = imports;
+        this.dataLastUpdated = UUID.randomUUID().toString();
+    }
+
+    public ArrayList<Pair<String, PlaylistInfo>> GetNestedPlaylists() {
+        if(this.nestedPlaylistData == null) {
+            LoadNestedPlaylistsData();
+        }
+        return PlaylistMapToArraylist(this.nestedPlaylistData);
+    }
+
+    public ArrayList<Pair<String, PlaylistInfo>> GetImportedPlaylists() {
+        if(this.importedPlaylistData == null) {
+            LoadImportedPlaylistsData();
+        }
+        return PlaylistMapToArraylist(this.importedPlaylistData);
+    }
+
+    public void RemovePlaylist(String key) {
+        this.nestedPlaylistData.remove(key);
+        this.importedPlaylistData.remove(key);
+        this.dataLastUpdated = UUID.randomUUID().toString();
+    }
+
+    public PlaylistInfo GetPlaylistFromKey(String key) {
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            return playlist;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        return playlist;
+    }
+
+    public void RenamePlaylist(String key, String newName) {
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.setTitle(newName);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            return;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.setTitle(newName);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+        }
+    }
+
+    public void AddSongToPlaylist(String key, PlaybackAudioInfo audio) {
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.AddVideoToPlaylist(audio);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            return;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.AddVideoToPlaylist(audio);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+        }
+    }
+
+    public void CreateNewPlaylist(PlaylistInfo playlist, boolean isNested) {
+        String key = UUID.randomUUID().toString();
+        if(isNested) {
+            this.nestedPlaylistData.put(key, playlist);
+        }
+        else {
+            this.importedPlaylistData.put(key, playlist);
+        }
+        this.dataLastUpdated = UUID.randomUUID().toString();
+    }
+
+    public String GetDataLastUpdate() {
+        return this.dataLastUpdated;
     }
 
     /**
      * Downloads song with the given, valid URL into the MUSIC directory.
-     * It is required to implement {@link DownloadFromUrlListener} to obtain the
+     * It is required to implement {@link DownloadListener} to obtain the
      * result of this call and to catch potential errors.
      * onError returns -1 in the attempt parameter if a critical failure occurs.
      * onError returns 0 if the file already exists.
      * @param url Url of the Audio source.
      * @param downloadFromUrlListener Listener used to get the results/errors of this call.
      */
-    public void DownloadSongToDirectoryFromUrl(String url, DownloadFromUrlListener downloadFromUrlListener) {
+    public void DownloadSongToDirectoryFromUrl(String url, DownloadListener downloadFromUrlListener) {
         if(!this.downloaderInitialized) {
             downloadFromUrlListener.onError(-1,"Downloader failed to initialize on startup, thus it is in a failed state.");
             return;
@@ -281,6 +286,15 @@ public class DataManager {
                 } catch (YoutubeDLException | InterruptedException e) {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
                     e.printStackTrace();
+                    if(e.getMessage() != null) {
+                        if(e.getMessage().contains("not a valid URL.")) {
+                            downloadFromUrlListener.onError(-1,"Not a valid URL.");
+                            return;
+                        } else if(e.getMessage().contains("Video unavailable")) {
+                            downloadFromUrlListener.onError(-1,"Video is unavailable.");
+                            return;
+                        }
+                    }
                     downloadFromUrlListener.onError(downloadAttemptNumber,"Failed to Download from the given URL.");
 
                     //We will retry download
@@ -341,6 +355,7 @@ public class DataManager {
                 }
             }
 
+            this.dataLastUpdated = UUID.randomUUID().toString();
             downloadFromUrlListener.onComplete(audio);
         });
 
@@ -348,58 +363,57 @@ public class DataManager {
     }
 
     /**
-     * Adds a playlist on the database. The playlist will not be
-     * uploaded and just exists as a placeholder.
-     * @param playlistInfo Link to json on web.
-     * @param platform Platform that the playlist was imported from (Youtube, Spotify, etc).
+     * Downloads song with the given file source directory.
+     * It is required to implement {@link DownloadListener} to obtain the
+     * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * @param from File Uri of the source file.
+     * @param downloadListener Listener used to get the results/errors of this call.
      */
-    public void ImportPlaylist(PlaylistInfo playlistInfo, String platform) {
-        Thread thread = new Thread(() -> {
-            FirebaseManager firebase = FirebaseManager.getInstance();
-            if(firebase.FindExistingPlaylistInDatabase(playlistInfo.getLinkSource()) == null) {
-                return;
+    public void DownloadFileFromDirectoryToDirectory(Uri from, DownloadListener downloadListener) {
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+
+        File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
+
+        String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0];
+        if(GetFileFromDirectory(this.appMusicDirectory,destFileName) != null) {
+            downloadListener.onError(-1,"Song already exists.");
+            return;
+        }
+
+        try{
+            inputStream = this.contentResolver.openInputStream(from);
+            outputStream = new FileOutputStream(fileDestination);
+
+            byte[] byteArrayBuffer = new byte[1024];
+            int length;
+            while((length = inputStream.read(byteArrayBuffer)) > 0) {
+                outputStream.write(byteArrayBuffer,0,length);
             }
 
-            DocumentReference playlistReference = firebase.CreateNewPlaylist(playlistInfo.getTitle(),false,platform,playlistInfo.getLinkSource());
-            ArrayList<DocumentReference> metadataList = new ArrayList<>();
-            for(PlaybackAudioInfo audioInfo : playlistInfo.getAllVideos()) {
-                Pair<DocumentReference,Boolean> existPath = firebase.FindExistingSongInDatabase(audioInfo.getTitle(),audioInfo.getOrigin());
-                if(existPath == null) {
-                    DocumentReference metadataReference = firebase.CreateNewSongMetadata(audioInfo,null);
-                    metadataList.add(metadataReference);
-                }
-                else {
-                    metadataList.add(existPath.first);
-                }
-            }
+            inputStream.close();
+            outputStream.close();
 
-            firebase.SetSongsInPlaylist(playlistReference,metadataList);
-        });
+            PlaybackAudioInfo audio = new PlaybackAudioInfo();
+            audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
+            audio.setAudioSource(fileDestination.getAbsolutePath());
+            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+            audio.setTitle(fileDestination.getName().split("\\.(?=[^\\.]+$)")[0]);
+            audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.UNKNOWN);
 
-        thread.start();
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            downloadListener.onComplete(audio);
+        } catch(Exception e) {
+            Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
+            e.printStackTrace();
+            downloadListener.onError(-1,"File failed to download.");
+        }
     }
 
-    /**
-     * Adds a song to the playlist on the database. The song will not be
-     * uploaded and just exists as a placeholder.
-     * @param audioInfo Link to json on web.
-     * @param playlistPath Working directory.
-     */
-    public void AddSongToPlaylist(PlaybackAudioInfo audioInfo, String playlistPath) {
-        Thread thread = new Thread(() -> {
-            FirebaseManager firebase = FirebaseManager.getInstance();
-            Pair<DocumentReference, Boolean> existPath = firebase.FindExistingSongInDatabase(audioInfo.getTitle(), audioInfo.getOrigin());
-            if (existPath != null) {
-                firebase.AddAudioToPlaylist(playlistPath, existPath.first.getPath());
-            } else {
-                audioInfo.setAudioSource(null);
-                audioInfo.setThumbnailSource(null);
-                DocumentReference newMetadata = firebase.CreateNewSongMetadata(audioInfo, null);
-                firebase.AddAudioToPlaylist(playlistPath, newMetadata.getPath());
-            }
-        });
-
-        thread.start();
+    public void VerifyData() {
+        //This will check every song within the playlists to see if the
+        //song exists within the local file directory.
     }
 
     /**
@@ -421,7 +435,7 @@ public class DataManager {
         final CountDownLatch latch = new CountDownLatch(1);
         AndroidNetworking.download(link, directory.getAbsolutePath(), fileName)
                 .setPriority(Priority.MEDIUM)
-                .build().startDownload(new DownloadListener() {
+                .build().startDownload(new com.androidnetworking.interfaces.DownloadListener() {
             @Override
             public void onDownloadComplete() {
                 Log.d(LOG_TAG, "Download Complete");
@@ -480,7 +494,10 @@ public class DataManager {
         }
     }
 
-
+    /**
+     * Constructs a playlist based on the internal directory
+     * @return PlaylistInfo
+     */
     public PlaylistInfo ConstructPlaylistFromLocalFiles() {
         File[] files = this.appMusicDirectory.listFiles();
         if(files == null) {
@@ -531,7 +548,7 @@ public class DataManager {
      * @param context Context of the application.
      * @return File directory path.
      */
-    public File GetLocalMusicDirectory(Context context) {
+    private File GetLocalMusicDirectory(Context context) {
         File appMusicDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_AUDIO_STORAGE);
         if (!appMusicDirectory.exists()) {
             appMusicDirectory.mkdir();
@@ -545,7 +562,7 @@ public class DataManager {
      * @param context Context of the application.
      * @return File directory path.
      */
-    public File GetLocalImageDirectory(Context context) {
+    private File GetLocalImageDirectory(Context context) {
         File appImageDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_IMG_STORAGE);
         if (!appImageDirectory.exists()) {
             appImageDirectory.mkdir();
@@ -559,7 +576,7 @@ public class DataManager {
      * @param context Context of the application.
      * @return File directory path.
      */
-    public File GetLocalCacheDirectory(Context context) {
+    private File GetLocalCacheDirectory(Context context) {
         File appCacheDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_CACHE);
         if (!appCacheDirectory.exists()) {
             appCacheDirectory.mkdir();
@@ -582,15 +599,36 @@ public class DataManager {
         }
     }
 
-    /**
-     * Gets the default image when a thumbnail isn't valid.
-     * @return File object.
-     */
-    public File GetDefaultImage() {
-        File newThumbnail = GetFileFromDirectory(this.appImageDirectory, DataManager.DEFAULT_THUMBNAIL);
-        if(newThumbnail == null) {
-            newThumbnail = DownloadToLocalStorage(FirebaseManager.DEFAULT_THUMBNAIL_SOURCE, this.appImageDirectory, DataManager.DEFAULT_THUMBNAIL);
+    public ArrayList<Pair<String, PlaylistInfo>> PlaylistMapToArraylist(HashMap<String, PlaylistInfo> map) {
+        ArrayList<Pair<String, PlaylistInfo>> pairArray = new ArrayList<>();
+
+        for(Map.Entry<String, PlaylistInfo> entry : map.entrySet()) {
+            String key = entry.getKey();
+            PlaylistInfo value = entry.getValue();
+            pairArray.add(new Pair<>(key, value));
         }
-        return newThumbnail;
+        Collections.sort(pairArray, (left, right) -> {
+            if(left.second.getLastViewed() < right.second.getLastViewed()) {
+                return -1;
+            }
+            else if(left.second.getLastViewed() > right.second.getLastViewed()) {
+                return 1;
+            }
+            return 0;
+        });
+
+        return pairArray;
+    }
+
+    public String GetFileNameFromUri(Uri uri) {
+        if(uri == null) {
+            return null;
+        }
+        Cursor cursor = this.contentResolver.query(uri,null,null,null,null);
+        int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        cursor.moveToFirst();
+        String returnString = cursor.getString(nameIndex);
+        cursor.close();
+        return returnString;
     }
 }
