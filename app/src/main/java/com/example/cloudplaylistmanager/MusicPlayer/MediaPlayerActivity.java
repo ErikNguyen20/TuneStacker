@@ -103,7 +103,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
             this.startingPosition = ran.nextInt(this.playlistInfo.getAllVideos().size());
         }
         else {
-            this.startingPosition = getIntent().getIntExtra(POSITION_TAG,0);
+            this.startingPosition = getIntent().getIntExtra(POSITION_TAG,-1);
         }
 
 

@@ -24,7 +24,11 @@ public class PlaylistNestedViewModel extends ViewModel {
         if(this.lastUpdated == null ||
                 !recentUpdate.equals(this.lastUpdated.getValue())) {
 
-            this.playlistInfo.postValue(new Pair<>(key,DataManager.getInstance().GetPlaylistFromKey(key)));
+            PlaylistInfo playlist = DataManager.getInstance().GetPlaylistFromKey(key);
+            if(playlist != null) {
+                this.playlistInfo.postValue(new Pair<>(key,playlist));
+            }
+
             this.lastUpdated.postValue(recentUpdate);
         }
     }

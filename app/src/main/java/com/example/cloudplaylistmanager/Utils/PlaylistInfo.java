@@ -35,6 +35,9 @@ public class PlaylistInfo implements Serializable {
     }
 
     public void UpdateAllVideos() {
+        if(this.allVideos == null) {
+            this.allVideos = new LinkedHashSet<>();
+        }
         this.allVideos.clear();
         this.allVideos.addAll(this.insertedVideos);
         for(Pair<String, PlaylistInfo> pair : importedPlaylists) {
@@ -94,9 +97,15 @@ public class PlaylistInfo implements Serializable {
         for(int index = 0; index < this.importedPlaylists.size(); index++) {
             if(this.importedPlaylists.get(index).first.equals(key)) {
                 this.importedPlaylists.remove(index);
+                UpdateAllVideos();
                 break;
             }
         }
+    }
+
+    public void ClearImportedPlaylists() {
+        this.importedPlaylists.clear();
+        UpdateAllVideos();
     }
 
     public ArrayList<String> GetImportedPlaylistKeys() {

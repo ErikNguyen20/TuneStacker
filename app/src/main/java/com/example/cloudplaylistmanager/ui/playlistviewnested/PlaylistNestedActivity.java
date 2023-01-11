@@ -186,8 +186,8 @@ public class PlaylistNestedActivity extends AppCompatActivity {
     }
 
     @Override
-    protected void onStart() {
-        super.onStart();
+    protected void onResume() {
+        super.onResume();
         this.playlistNestedViewModel.updateData(this.uuidKey);
     }
 }

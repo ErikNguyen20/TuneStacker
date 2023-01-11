@@ -75,7 +75,7 @@ public class DataManager {
 
 
     private DataManager(Context context) {
-        this.YtUtilities = new YoutubeUtilities(context);
+        this.YtUtilities = new YoutubeUtilities();
         AndroidNetworking.initialize(context);
         try {
             this.appMusicDirectory = GetLocalMusicDirectory(context);
@@ -117,7 +117,9 @@ public class DataManager {
         return instance;
     }
 
-
+    /**
+     * Saves all playlists data to {@link SharedPreferences}.
+     */
     public void SaveData() {
         SharedPreferences.Editor editor = this.sharedPreferences.edit();
 
@@ -130,33 +132,28 @@ public class DataManager {
         editor.apply();
     }
 
+    /**
+     * Loads all of the imported playlists data from {@link SharedPreferences}.
+     * This method must be called AFTER loading the imported playlists.
+     */
     private void LoadNestedPlaylistsData() {
         //Imports playlist data must be fetched first.
         Gson gson = new Gson();
         String json = this.sharedPreferences.getString(SAVED_PREFERENCES_NESTED_TAG,"");
         Type nestedPlaylistsType = new TypeToken<HashMap<String, PlaylistInfo>>(){}.getType();
 
-        HashMap<String, PlaylistInfo> nestedPlaylists = gson.fromJson(json,nestedPlaylistsType);
-        if(nestedPlaylists == null) {
-            nestedPlaylists = new HashMap<>();
+        this.nestedPlaylistData = gson.fromJson(json,nestedPlaylistsType);
+        if(this.nestedPlaylistData == null) {
+            this.nestedPlaylistData = new HashMap<>();
         }
 
-        //Populate the nested playlist with the imported values.
-        this.nestedPlaylistData = new HashMap<>();
-        for(Map.Entry<String, PlaylistInfo> entry : nestedPlaylists.entrySet()) {
-            PlaylistInfo playlist = entry.getValue();
-            for(String key : playlist.GetImportedPlaylistKeys()) {
-                if(this.importedPlaylistData.containsKey(key)) {
-                    playlist.ImportPlaylist(key, this.importedPlaylistData.get(key));
-                }
-            }
-            this.nestedPlaylistData.put(entry.getKey(),playlist);
-        }
-
-        this.nestedPlaylistData = nestedPlaylists;
+        RefreshNestedPlaylist(null);
         this.dataLastUpdated = UUID.randomUUID().toString();
     }
 
+    /**
+     * Loads all of the imported playlists data from {@link SharedPreferences}.
+     */
     private void LoadImportedPlaylistsData() {
         //Gets imported playlist through gson and shared preferences.
         Gson gson = new Gson();
@@ -178,6 +175,40 @@ public class DataManager {
         this.dataLastUpdated = UUID.randomUUID().toString();
     }
 
+    /**
+     * Refreshes the given nested playlist by refreshing all of the imported playlist data
+     * that is within the nested playlist. If no key is specified, then the refresh will happen
+     * on all nested playlists in the database.
+     * @param key Key of the playlist that is to be fetched from the database.
+     */
+    public void RefreshNestedPlaylist(@Nullable String key) {
+        Thread thread = new Thread(() -> {
+            if(key != null) {
+                PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+                if(playlist != null) {
+                    playlist.ClearImportedPlaylists();
+                    for(String storedKey : playlist.GetImportedPlaylistKeys()) {
+                        if(this.importedPlaylistData.containsKey(storedKey)) {
+                            playlist.ImportPlaylist(storedKey, this.importedPlaylistData.get(storedKey));
+                        }
+                    }
+                    this.nestedPlaylistData.put(key,playlist);
+                }
+            }
+            else {//Update all playlists
+                for(String storedKey : this.nestedPlaylistData.keySet()) {
+                    RefreshNestedPlaylist(storedKey);
+                }
+            }
+            this.dataLastUpdated = UUID.randomUUID().toString();
+        });
+        thread.start();
+    }
+
+    /**
+     * Returns all nested playlists from the database.
+     * @return Fetched playlists.
+     */
     public ArrayList<Pair<String, PlaylistInfo>> GetNestedPlaylists() {
         if(this.nestedPlaylistData == null) {
             LoadNestedPlaylistsData();
@@ -185,6 +216,10 @@ public class DataManager {
         return PlaylistMapToArraylist(this.nestedPlaylistData);
     }
 
+    /**
+     * Returns all imported playlists from the database.
+     * @return Fetched playlists.
+     */
     public ArrayList<Pair<String, PlaylistInfo>> GetImportedPlaylists() {
         if(this.importedPlaylistData == null) {
             LoadImportedPlaylistsData();
@@ -192,6 +227,11 @@ public class DataManager {
         return PlaylistMapToArraylist(this.importedPlaylistData);
     }
 
+    /**
+     * Returns a specified playlist from the database.
+     * @param key Key of the playlist that is to be fetched from the database.
+     * @return Fetched playlist. Null if not found.
+     */
     public PlaylistInfo GetPlaylistFromKey(String key) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
@@ -201,9 +241,17 @@ public class DataManager {
         return playlist;
     }
 
+    /**
+     * Renames a playlist from the database.
+     * @param key Key of the playlist that is to be renamed from the database.
+     * @param newName New name of the playlist.
+     */
     public void RenamePlaylist(String key, String newName) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
+            if(playlist.getTitle().equals(newName)) {
+                return;
+            }
             playlist.setTitle(newName);
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
@@ -211,12 +259,21 @@ public class DataManager {
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
+            if(playlist.getTitle().equals(newName)) {
+                return;
+            }
             playlist.setTitle(newName);
             this.importedPlaylistData.put(key,playlist);
+            RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
         }
     }
 
+    /**
+     * Update's a playlist's last viewed value. This determines the order in which the
+     * playlists are displayed in the views, with the most recently viewed playlist being first.
+     * @param key Key of the playlist that is to be modified from the database.
+     */
     public void UpdatePlaylistLastViewed(String key) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
@@ -233,6 +290,11 @@ public class DataManager {
         }
     }
 
+    /**
+     * Adds a new audio source to a given playlist from the database.
+     * @param key Key of the playlist that is to be modified from the database.
+     * @param audio Newly added audio source.
+     */
     public void AddSongToPlaylist(String key, PlaybackAudioInfo audio) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
@@ -245,10 +307,17 @@ public class DataManager {
         if(playlist != null) {
             playlist.AddVideoToPlaylist(audio);
             this.importedPlaylistData.put(key,playlist);
+            RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
         }
     }
 
+    /**
+     * Removes a playlist from the database.
+     * @param key Key of the playlist that is to be removed from the database.
+     * @param parentKey If the new playlist is imported and is being removed from within a nested playlist,
+     *                  declare a value for the parentKey, which is the key of the nested playlist.
+     */
     public void RemovePlaylist(String key, @Nullable String parentKey) {
         if(parentKey != null) {
             PlaylistInfo playlist = this.nestedPlaylistData.get(parentKey);
@@ -267,7 +336,7 @@ public class DataManager {
             if(removedPlaylist == null) {
                 return;
             }
-            //Remove from all other nesetdplaylists (Iterate through them all)
+            //Remove from all other nested playlists
             for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
                 PlaylistInfo value = entry.getValue();
                 value.RemoveImportedPlaylist(key);
@@ -277,17 +346,35 @@ public class DataManager {
         }
     }
 
-    public void CreateNewPlaylist(PlaylistInfo playlist, boolean isNested) {
+    /**
+     * Creates a new playlist and places it into the database.
+     * @param playlist Playlist data of the new playlist.
+     * @param isNested Indicates whether or not the new playlist is a nested playlist or an imported one.
+     * @param parentKey If the new playlist is imported and is being added within a nested playlist, declare
+     *                  a value for the parentKey, which is the key of the nested playlist.
+     */
+    public void CreateNewPlaylist(PlaylistInfo playlist, boolean isNested, @Nullable String parentKey) {
         String key = UUID.randomUUID().toString();
         if(isNested) {
             this.nestedPlaylistData.put(key, playlist);
         }
         else {
             this.importedPlaylistData.put(key, playlist);
+            if(parentKey != null) {
+                PlaylistInfo parentPlaylist = this.nestedPlaylistData.get(parentKey);
+                if(parentPlaylist != null) {
+                    parentPlaylist.ImportPlaylist(key, playlist);
+                }
+            }
         }
         this.dataLastUpdated = UUID.randomUUID().toString();
     }
 
+    /**
+     * Fetches the most recent update identifier. A different value from the one fetched
+     * previous indicates that the dataset has been updated/changed.
+     * @return Last Update Identifier.
+     */
     public String GetDataLastUpdate() {
         return this.dataLastUpdated;
     }
@@ -313,8 +400,6 @@ public class DataManager {
 
             int downloadAttemptNumber = 1;
             boolean success = false;
-            Log.d(LOG_TAG,"Downloading Song to Directory.");
-            Log.d(LOG_TAG,this.appMusicDirectory.getAbsolutePath());
             while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !success) {
                 request = new YoutubeDLRequest(url);
                 request.addOption("-x");
@@ -329,11 +414,6 @@ public class DataManager {
                         downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
                     });
                     responseString = response.getOut();
-
-                    if(responseString.contains("has already been downloaded")) {
-                        downloadFromUrlListener.onError(0,"File already exists.");
-                        return;
-                    }
 
                     success = true;
                 } catch (YoutubeDLException | InterruptedException e) {

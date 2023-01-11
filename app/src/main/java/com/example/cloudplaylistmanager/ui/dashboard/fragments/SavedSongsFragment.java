@@ -44,6 +44,7 @@ import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.DownloadListener;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+import com.example.cloudplaylistmanager.ui.addNewPopupSingle.AddNewPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
 
 import java.io.File;
@@ -52,34 +53,10 @@ import java.io.File;
  * A simple {@link Fragment} subclass.
  */
 public class SavedSongsFragment extends Fragment {
-    private static final String TOAST_KEY = "toast_key";
 
     private PlaylistInfo savedSongs;
     private SongsRecyclerAdapter songsAdapter;
     private DashboardViewModel viewModel;
-
-    private final MutableLiveData<Uri> selectedFile = new MutableLiveData<>();
-    private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            new ActivityResultCallback<ActivityResult>() {
-                @Override
-                public void onActivityResult(ActivityResult result) {
-                    if(result.getResultCode() == Activity.RESULT_OK) {
-                        Intent resultIntent = result.getData();
-                        if(resultIntent != null) {
-                            Uri uri = resultIntent.getData();
-                            selectedFile.setValue(uri);
-                        }
-                    }
-                }
-            });
-    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            Toast.makeText(getContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
-        }
-    };
-
 
 
     public SavedSongsFragment() {
@@ -108,7 +85,8 @@ public class SavedSongsFragment extends Fragment {
                     startActivity(intent);
                 }
                 else {
-                    LaunchDialogPopup();
+                    Intent intent = new Intent(getActivity(), AddNewPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    startActivity(intent);
                 }
             }
         });
@@ -129,117 +107,4 @@ public class SavedSongsFragment extends Fragment {
         return view;
     }
 
-    private LiveData<Uri> getUriResult() {
-        return this.selectedFile;
-    }
-
-    public void SendToast(String message) {
-        Message msg = this.toastHandler.obtainMessage();
-        Bundle bundle = new Bundle();
-        bundle.putString(TOAST_KEY,message);
-        msg.setData(bundle);
-        this.toastHandler.sendMessage(msg);
-    }
-
-    public void LaunchDialogPopup() {
-        Dialog dialog = new Dialog(getContext());
-        dialog.setContentView(R.layout.create_new_song_popup);
-        dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-
-        TextView downloadButton = dialog.findViewById(R.id.textView_download_button);
-        TextView chooseButton = dialog.findViewById(R.id.textView_choose_file);
-        TextView fileName = dialog.findViewById(R.id.textView_file_name);
-        EditText urlField = dialog.findViewById(R.id.edit_text_url);
-        this.selectedFile.postValue(null);
-
-        getUriResult().observe(this, new Observer<Uri>() {
-            public void onChanged(Uri uri) {
-                if(uri == null) {
-                    return;
-                }
-
-                String uriName = DataManager.getInstance().GetFileNameFromUri(uri);
-                uriName = uriName == null ? uri.getLastPathSegment() : uriName;
-                fileName.setText(uriName);
-                Log.d("FileSelected",uriName);
-            }
-        });
-
-        chooseButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-                intent.setType("audio/*");
-                intent = Intent.createChooser(intent, "Choose an Audio File");
-
-                activityResultLauncher.launch(intent);
-            }
-        });
-        downloadButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Uri uri = selectedFile.getValue();
-                String urlInput = urlField.getText().toString();
-                ProgressDialog progressDialog = new ProgressDialog(getContext());
-                progressDialog.setTitle("Downloading");
-                progressDialog.setMessage("Preparing for download...");
-                progressDialog.setCanceledOnTouchOutside(false);
-
-                if(uri != null) {
-                    progressDialog.show();
-                    DataManager.getInstance().DownloadFileFromDirectoryToDirectory(uri, new DownloadListener() {
-                        @Override
-                        public void onComplete(PlaybackAudioInfo audio) {
-                            viewModel.updateData();
-                            progressDialog.dismiss();
-                            SendToast("Complete!");
-                        }
-
-                        @Override
-                        public void onProgressUpdate(float progress, long etaSeconds) {}
-
-                        @Override
-                        public void onError(int attempt, String error) {
-                            progressDialog.dismiss();
-                            SendToast(error);
-                        }
-                    });
-                    dialog.dismiss();
-                }
-                else if(!urlInput.isEmpty()){
-                    progressDialog.show();
-                    DataManager.getInstance().DownloadSongToDirectoryFromUrl(urlInput, new DownloadListener() {
-                        @Override
-                        public void onComplete(PlaybackAudioInfo audio) {
-                            viewModel.updateData();
-                            progressDialog.dismiss();
-                            SendToast("Complete!");
-                        }
-
-                        @Override
-                        public void onProgressUpdate(float progress, long etaSeconds) {
-                            progressDialog.setMessage("Download Progress: " + progress);
-                        }
-
-                        @Override
-                        public void onError(int attempt, String error) {
-                            if(attempt == -1) {
-                                progressDialog.dismiss();
-                                SendToast(error);
-                            }
-                            else {
-                                progressDialog.setMessage("Failed, retrying download. Retrying: " + attempt);
-                            }
-                        }
-                    });
-                    dialog.dismiss();
-                }
-                else {
-                    SendToast("Please select a means of adding an Audio Source.");
-                }
-            }
-        });
-
-        dialog.show();
-    }
 }

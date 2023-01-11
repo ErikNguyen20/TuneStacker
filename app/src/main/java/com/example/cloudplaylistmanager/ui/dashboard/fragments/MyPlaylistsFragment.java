@@ -20,6 +20,7 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+import com.example.cloudplaylistmanager.ui.addNewPopupSingle.AddNewPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedActivity;
 
@@ -56,11 +57,15 @@ public class MyPlaylistsFragment extends Fragment {
             @Override
             public void onClicked(int viewType, int position) {
                 if(viewType != PlaylistRecyclerAdapter.ADD_ITEM_TOKEN) {
-                    Log.e("MyPlaylistFragment","Clicked Item");
                     Intent intent = new Intent(getActivity(), PlaylistNestedActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,myPlaylists.get(position).second);
                     intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,myPlaylists.get(position).first);
                     startActivity(intent);
+                }
+                else {
+                    //Intent intent = new Intent(getActivity(), AddNewPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    //intent.putExtra(AddNewPopupSingleActivity.IS_PLAYLIST_TAG,true);
+                    //startActivity(intent);
                 }
             }
         });

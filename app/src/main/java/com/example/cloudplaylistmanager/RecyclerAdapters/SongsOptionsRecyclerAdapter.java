@@ -3,6 +3,7 @@ package com.example.cloudplaylistmanager.RecyclerAdapters;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -125,9 +126,11 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
                 public void onClick(View view) {
                     PopupMenu popupMenu = new PopupMenu(context, options);
                     popupMenu.inflate(R.menu.song_item_options);
+                    Log.e("SongsoptionsRecycler","MenuOptionsclicked");
                     popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem menuItem) {
+                            Log.e("SongsoptionsRecycler","menuItemclicked");
                             SelectPopupMenuOption(getLayoutPosition(), menuItem.getItemId());
                             return true;
                         }

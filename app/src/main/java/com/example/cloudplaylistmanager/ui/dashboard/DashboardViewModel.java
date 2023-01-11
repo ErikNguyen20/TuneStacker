@@ -59,7 +59,7 @@ public class DashboardViewModel extends ViewModel {
         if(this.lastUpdate.getValue() == null ||
                 !recentUpdate.equals(this.lastUpdate.getValue())) {
 
-            /*
+
             ArrayList<Pair<String,PlaylistInfo>> fetchedImportsPlaylist = DataManager.getInstance().GetImportedPlaylists();
             if(fetchedImportsPlaylist != null) {
                 this.importedPlaylists.setValue(fetchedImportsPlaylist);
@@ -69,7 +69,6 @@ public class DashboardViewModel extends ViewModel {
             if(fetchedMyPlaylists != null) {
                 this.myPlaylists.setValue(fetchedMyPlaylists);
             }
-            */
 
             PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
             if(fetchedSavedSongs != null) {

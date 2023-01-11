@@ -17,6 +17,7 @@ import androidx.annotation.Nullable;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 
 
@@ -39,7 +40,7 @@ public class MusicService extends Service implements
     private MediaPlayer mediaPlayer = null;
 
     private ArrayList<PlaybackAudioInfo> playlist = null;
-    private int[] shuffledPositions;
+    private ArrayList<Integer> shuffledPositions;
     private boolean[] errorPreparingPositions;
     private int currentPlayPosition, songCounter;
     private boolean isShuffle, isRepeat = false;
@@ -258,11 +259,21 @@ public class MusicService extends Service implements
             stopSelf();
             return;
         }
+
         if(overridePosition == NEXT_SONG_PREV) {
-            this.songCounter = (this.songCounter - 2) % this.playlist.size();
+            this.songCounter--;
+            if(this.songCounter < 0) {
+                GenerateShuffledList();
+                this.songCounter = this.playlist.size() - 1;
+            }
+            if(this.isShuffle) {
+                this.currentPlayPosition = this.shuffledPositions.get(this.songCounter);
+            }
+            else {
+                this.currentPlayPosition = this.songCounter;
+            }
         }
-        if(overridePosition == NEXT_SONG_IGNORED) {
-            //Increments the song counter and checks if repeat mode is enabled.
+        else if(overridePosition == NEXT_SONG_IGNORED) {
             this.songCounter++;
             if(this.songCounter >= this.playlist.size()) {
                 if(!this.isRepeat) {
@@ -272,28 +283,21 @@ public class MusicService extends Service implements
                     stopSelf();
                     return;
                 }
-                //Regenerates a new shuffled list for the next play through.
                 GenerateShuffledList();
+                this.songCounter = 0;
             }
-            this.songCounter = this.songCounter % this.playlist.size();
-
-            //If shuffle mode is on, select a shuffled position using the current songCounter.
             if(this.isShuffle) {
-                int nextPlayPosition = this.shuffledPositions[this.songCounter];
-                //If the current song is the same as the next, then increment songCounter by 1.
-                if(this.currentPlayPosition == nextPlayPosition) {
-                    nextPlayPosition = this.shuffledPositions[(this.songCounter + 1) % this.playlist.size()];
-                    this.songCounter++;
-                }
-                this.currentPlayPosition = nextPlayPosition;
+                this.currentPlayPosition = this.shuffledPositions.get(this.songCounter);
             }
             else {
-                this.currentPlayPosition = (this.currentPlayPosition + 1) % this.playlist.size();
+                this.currentPlayPosition = this.songCounter;
             }
         }
-        else {
-            this.currentPlayPosition = overridePosition % this.playlist.size();
+        else { //Force select song
+            this.songCounter = overridePosition % this.playlist.size();
+            this.currentPlayPosition = this.songCounter;
         }
+
 
         //Selects the audio from the playlist.
         PlaybackAudioInfo audio = this.playlist.get(this.currentPlayPosition);
@@ -472,15 +476,12 @@ public class MusicService extends Service implements
         }
 
         Random ran = new Random();
-        this.shuffledPositions = new int[this.playlist.size()];
-        for(int index = 0; index < this.playlist.size(); index++) {
-            this.shuffledPositions[index] = index;
+        if(this.shuffledPositions == null) {
+            this.shuffledPositions = new ArrayList<>();
+            for(int index = 0; index < this.playlist.size(); index++) {
+                this.shuffledPositions.add(index);
+            }
         }
-        for(int index = this.playlist.size() - 1; index > 0; index--) {
-            int other = ran.nextInt(index);
-            int temp = this.shuffledPositions[index];
-            this.shuffledPositions[index] = other;
-            this.shuffledPositions[other] = temp;
-        }
+        Collections.shuffle(this.shuffledPositions,ran);
     }
 }

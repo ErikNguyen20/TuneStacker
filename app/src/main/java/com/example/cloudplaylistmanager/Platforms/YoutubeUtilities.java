@@ -27,12 +27,6 @@ public class YoutubeUtilities {
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
     private static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
 
-    private Context context;
-
-
-    public YoutubeUtilities(Context context) {
-        this.context = context;
-    }
 
     /**
      * Fetches all videos in a youtube playlist with a given playlist url.
@@ -41,7 +35,7 @@ public class YoutubeUtilities {
      * @param url Url of the Youtube Playlist
      * @param playlistListener Listener used to get the results/errors of this call.
      */
-    public void FetchPlaylistItems(String url, FetchPlaylistListener playlistListener) {
+    public static void FetchPlaylistItems(String url, FetchPlaylistListener playlistListener) {
         Thread thread = new Thread(() -> {
             String extractedPlaylistID = ExtractPlaylistIdFromUrl(url);
             if(extractedPlaylistID == null) {
@@ -106,7 +100,7 @@ public class YoutubeUtilities {
      * Extracts the Playlist Metadata from the Youtube Playlist ID.
      * @param id ID of the playlist on Youtube.
      */
-    public YoutubePlaylistInfo GetPlaylistInfo(String id) {
+    public static YoutubePlaylistInfo GetPlaylistInfo(String id) {
         //Initializes Query Parameters for the HTTP Get Request.
         HashMap<String,String> params = new HashMap<>();
         params.put("part", "snippet");
@@ -178,7 +172,7 @@ public class YoutubeUtilities {
      * @param result JSON Result of the fetch api that will be parsed.
      * @return YtPlaylistInfo object
      */
-    private YoutubePlaylistInfo ParsePlaylistJsonResult(JSONObject result) {
+    private static YoutubePlaylistInfo ParsePlaylistJsonResult(JSONObject result) {
         if(result == null) {
             return null;
         }
@@ -207,6 +201,7 @@ public class YoutubeUtilities {
                 else {
                     video.setTitle("Private");
                     video.setAuthor("Private");
+                    continue;
                 }
 
                 video.setOrigin(BASE_VIDEO_URL + item.getJSONObject("resourceId").getString("videoId"));
@@ -224,7 +219,7 @@ public class YoutubeUtilities {
 
 
 
-    public class YoutubePlaylistInfo extends PlaylistInfo {
+    public static class YoutubePlaylistInfo extends PlaylistInfo {
         private String nextPageToken;
         private int totalResults;
 

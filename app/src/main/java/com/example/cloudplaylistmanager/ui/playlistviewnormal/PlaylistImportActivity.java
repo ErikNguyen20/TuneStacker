@@ -77,6 +77,8 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.shufflePlay = findViewById(R.id.button_shuffleplay);
         this.recyclerView = findViewById(R.id.recyclerView_allSongs);
 
+        UpdateUI();
+
         this.playAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -100,6 +102,12 @@ public class PlaylistImportActivity extends AppCompatActivity {
                 intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,playlistInfo);
                 intent.putExtra(MediaPlayerActivity.SHUFFLED_TAG,true);
                 startActivity(intent);
+            }
+        });
+        this.playAll.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
             }
         });
 

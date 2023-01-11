@@ -71,8 +71,8 @@ public class DashboardFragment extends Fragment {
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
+    public void onResume() {
+        super.onResume();
         //Induce an update.
         this.dashboardViewModel.updateData();
     }
