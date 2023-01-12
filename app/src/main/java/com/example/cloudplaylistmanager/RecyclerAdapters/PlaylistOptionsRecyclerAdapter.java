@@ -108,7 +108,8 @@ public class PlaylistOptionsRecyclerAdapter extends RecyclerView.Adapter<Recycle
     }
 
     public void SelectPopupMenuOption(int position, final int optionId) {
-        this.recyclerViewPlaylistOptionsListener.SelectMenuOption(position, optionId);
+        position = position - 1;
+        this.recyclerViewPlaylistOptionsListener.SelectMenuOption(position, optionId, null);
     }
 
     public void ViewHolderClicked(int viewType, int position) {

@@ -1,5 +1,6 @@
 package com.example.cloudplaylistmanager.ui.playlistviewnested.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -17,7 +18,10 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+import com.example.cloudplaylistmanager.ui.addExistingPopupSingle.AddExistingPopupSingleActivity;
+import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedActivity;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedViewModel;
+import com.example.cloudplaylistmanager.ui.playlistviewnormal.PlaylistImportActivity;
 
 import java.util.ArrayList;
 
@@ -47,14 +51,23 @@ public class ImportsFragment extends Fragment {
 
         this.adapter = new PlaylistOptionsRecyclerAdapter(getContext(), null, new RecyclerViewOptionsListener() {
             @Override
-            public void SelectMenuOption(int position, int itemId) {
+            public void SelectMenuOption(int position, int itemId, String optional) {
 
             }
 
             @Override
             public void ButtonClicked(int viewType, int position) {
                 if(viewType != PlaylistOptionsRecyclerAdapter.ADD_ITEM_TOKEN) {
-
+                    Intent intent = new Intent(getActivity(), PlaylistImportActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,playlists.get(position).second);
+                    intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,playlists.get(position).first);
+                    startActivity(intent);
+                }
+                else {
+                    Intent intent = new Intent(getActivity(), AddExistingPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(AddExistingPopupSingleActivity.IS_PLAYLIST_TAG,true);
+                    intent.putExtra(AddExistingPopupSingleActivity.PARENT_UUID_TAG,parentUuidKey);
+                    startActivity(intent);
                 }
             }
         });

@@ -101,7 +101,8 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
     }
 
     public void SelectPopupMenuOption(int position, final int optionId) {
-        this.recyclerViewSongsOptionsListener.SelectMenuOption(position, optionId);
+        position = this.addButtonIncluded ? position - 1 : position;
+        this.recyclerViewSongsOptionsListener.SelectMenuOption(position, optionId, this.audios.get(position).getTitle());
     }
 
     public void ButtonClicked(int viewType, int position) {
@@ -126,22 +127,21 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
                 public void onClick(View view) {
                     PopupMenu popupMenu = new PopupMenu(context, options);
                     popupMenu.inflate(R.menu.song_item_options);
-                    Log.e("SongsoptionsRecycler","MenuOptionsclicked");
                     popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @Override
                         public boolean onMenuItemClick(MenuItem menuItem) {
-                            Log.e("SongsoptionsRecycler","menuItemclicked");
                             SelectPopupMenuOption(getLayoutPosition(), menuItem.getItemId());
                             return true;
                         }
                     });
+                    popupMenu.show();
                 }
             });
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-
+                    ButtonClicked(getItemViewType(),getLayoutPosition());
                 }
             });
         }

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/export_option"
+        android:title="@string/export_option_text"
+        android:icon="@drawable/ic_baseline_drive_file_move_24"/>
+    <item
+        android:id="@+id/sync_option"
+        android:title="@string/sync_option_text"
+        android:icon="@drawable/ic_baseline_sync_24" />
+    <item
+        android:id="@+id/backup_option"
+        android:title="@string/backup_option_text"
+        android:icon="@drawable/ic_baseline_cloud_upload_24"/>
+    <item
+        android:id="@+id/delete_option"
+        android:title="@string/remove_option_text"
+        android:icon="@drawable/ic_baseline_delete_24"
+        android:iconTint="@color/red"/>
+</menu>

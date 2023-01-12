@@ -8,6 +8,7 @@ import com.google.gson.annotations.Expose;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 
 public class PlaylistInfo implements Serializable {
@@ -75,6 +76,26 @@ public class PlaylistInfo implements Serializable {
 
     public ArrayList<PlaybackAudioInfo> getInsertedVideos() {
         return this.insertedVideos;
+    }
+
+
+    public boolean ContainsAudio(PlaybackAudioInfo audio) {
+        return this.insertedVideos.contains(audio);
+    }
+
+    public boolean ContainsImportedKey(String key) {
+        return this.importedPlaylistsKeys.contains(key);
+    }
+
+    public boolean RemoveVideo(String videoTitle) {
+        for(int index = 0; index < this.insertedVideos.size(); index++) {
+            if(videoTitle.equals(this.insertedVideos.get(index).getTitle())) {
+                this.insertedVideos.remove(index);
+                UpdateAllVideos();
+                return true;
+            }
+        }
+        return false;
     }
 
     public void AddVideoToPlaylist(PlaybackAudioInfo video) {

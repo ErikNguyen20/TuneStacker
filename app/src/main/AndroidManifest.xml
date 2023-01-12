@@ -17,11 +17,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CloudPlaylistManager">
         <activity
+            android:name=".ui.addExistingPopupSingle.AddExistingPopupSingleActivity"
+            android:excludeFromRecents="true"
+            android:label="@string/popup_create_new_title"
+            android:exported="false"
+            android:theme="@style/CustomDialogTheme" />
+        <activity
             android:name=".ui.addNewPopupSingle.AddNewPopupSingleActivity"
+            android:excludeFromRecents="true"
             android:exported="false"
             android:label="@string/popup_create_new_title"
-            android:excludeFromRecents="true"
-            android:theme="@style/CustomDialogTheme"/>
+            android:theme="@style/CustomDialogTheme" />
         <activity
             android:name=".ui.playlistviewnormal.PlaylistImportActivity"
             android:exported="false" />

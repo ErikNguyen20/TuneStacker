@@ -61,8 +61,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="24dp"
                     android:textColor="?attr/colorPrimary"
-                    android:ellipsize="end"
-                    android:maxLines="1"/>
+                    android:ellipsize="marquee"
+                    android:scrollHorizontally="true"
+                    android:marqueeRepeatLimit="marquee_forever"
+                    android:singleLine="true" />
 
 
             </LinearLayout>

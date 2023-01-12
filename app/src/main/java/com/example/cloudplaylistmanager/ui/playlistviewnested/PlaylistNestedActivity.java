@@ -7,6 +7,7 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -16,8 +17,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
@@ -168,8 +171,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         if (id == android.R.id.home) {
             this.finish();
         } else if(id == R.id.rename_option) {
-            //DataManager.getInstance().RenamePlaylist(this.uuidKey,"NewName");
-            this.playlistNestedViewModel.updateData(this.uuidKey);
+            ShowRenameDialog();
         } else if(id == R.id.export_option) {
 
         } else if(id == R.id.sync_option) {
@@ -189,5 +191,33 @@ public class PlaylistNestedActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         this.playlistNestedViewModel.updateData(this.uuidKey);
+    }
+
+    public void ShowRenameDialog() {
+        Dialog dialog = new Dialog(this);
+        dialog.setContentView(R.layout.popup_text_input);
+
+        TextView title = dialog.findViewById(R.id.popup_title);
+        EditText name = dialog.findViewById(R.id.edit_text_name);
+        TextView confirm = dialog.findViewById(R.id.textView_confirm_button);
+
+        title.setText(R.string.create_playlist_display);
+        name.setHint(R.string.popup_create_playlist_hint);
+
+        confirm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String inputName = name.getText().toString().trim();
+                if(!inputName.isEmpty()) {
+                    //Creates and updates the data.
+                    DataManager.getInstance().RenamePlaylist(uuidKey, inputName);
+                    playlistNestedViewModel.updateData(uuidKey);
+                    dialog.dismiss();
+                    Toast.makeText(PlaylistNestedActivity.this,"Playlist renamed to: \"" + inputName + "\"",Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
+        dialog.show();
     }
 }

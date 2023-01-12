@@ -53,14 +53,14 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if(holder.getItemViewType() == ADD_ITEM_TOKEN) {
-            ViewHolderAdd viewHolder = (ViewHolderAdd) holder;
+            SongsRecyclerAdapter.ViewHolderAdd viewHolder = (SongsRecyclerAdapter.ViewHolderAdd) holder;
             viewHolder.title.setText(R.string.add_song_display);
         }
         else {
             if(this.audios.isEmpty()) {
                 return;
             }
-            ViewHolderItem viewHolder = (ViewHolderItem) holder;
+            SongsRecyclerAdapter.ViewHolderItem viewHolder = (SongsRecyclerAdapter.ViewHolderItem) holder;
 
             //Populate the view with information on the UI.
             PlaybackAudioInfo audio = this.audios.get(this.addButtonIncluded ? position - 1 : position);

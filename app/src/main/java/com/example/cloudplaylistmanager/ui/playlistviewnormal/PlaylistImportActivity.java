@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -104,10 +105,12 @@ public class PlaylistImportActivity extends AppCompatActivity {
                 startActivity(intent);
             }
         });
-        this.playAll.setOnClickListener(new View.OnClickListener() {
+        this.source.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
+                String url = source.getText().toString();
+                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(url));
+                startActivity(intent);
             }
         });
 
@@ -116,7 +119,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
 
         this.adapter = new SongsOptionsRecyclerAdapter(this, this.playlistInfo, false, new RecyclerViewOptionsListener() {
             @Override
-            public void SelectMenuOption(int position, int itemId) {
+            public void SelectMenuOption(int position, int itemId, String optional) {
 
             }
 
@@ -142,6 +145,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.title.setText(this.playlistInfo.getTitle());
         this.subtitle.setText(new String(" " + this.playlistInfo.getAllVideos().size() + " songs"));
         this.source.setText(this.playlistInfo.getLinkSource() == null ? "" : this.playlistInfo.getLinkSource());
+        this.source.setSelected(true);
         if(!this.playlistInfo.getAllVideos().isEmpty()) {
             PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
             if(sourceAudio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
@@ -155,7 +159,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.nested_playlist_options,menu);
+        getMenuInflater().inflate(R.menu.imported_playlist_options,menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -163,8 +167,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
         int id = item.getItemId();
         if (id == android.R.id.home) {
             this.finish();
-        } else if(id == R.id.rename_option) {
-            //DataManager.getInstance().RenamePlaylist(this.uuidKey,"NewName");
         } else if(id == R.id.export_option) {
 
         } else if(id == R.id.sync_option) {

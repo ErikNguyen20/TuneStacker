@@ -12,12 +12,15 @@ import androidx.lifecycle.Observer;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
+import android.os.PowerManager;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -32,10 +35,16 @@ import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 public class AddNewPopupSingleActivity extends AppCompatActivity {
+    private static final String LOG_TAG = "PopupSingleActivity";
+    private static final String WAKE_LOCK_TAG = "popup:single";
     public static final String PARENT_UUID_KEY_TAG = "parent_uuid_key";
     public static final String IS_PLAYLIST_TAG = "is_playlist";
     private static final String TOAST_KEY = "toast_key";
+    private static final String PROGRESS_DIALOG_SHOW_KEY = "show_dialog_key";
+    private static final String PROGRESS_DIALOG_HIDE_KEY = "hide_dialog_key";
+    private static final String PROGRESS_DIALOG_UPDATE_KEY = "update_dialog_key";
 
+    //Activity Result callback used for retrieving the selected file from the user.
     private final MutableLiveData<Uri> selectedFile = new MutableLiveData<>();
     private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -51,20 +60,36 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                     }
                 }
             });
+    //Handler that handles toast and progress dialog messages.
     private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
         @Override
         public void handleMessage(@NonNull Message msg) {
-            Toast.makeText(getApplicationContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
+            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
+                Toast.makeText(getApplicationContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
+            }
+            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
+                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
+                progressDialog.show();
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
+                progressDialog.dismiss();
+            }
         }
     };
 
-    TextView downloadButton;
-    TextView chooseButton;
-    TextView fileName;
-    EditText urlField;
+    private TextView downloadButton;
+    private TextView chooseButton;
+    private TextView fileName;
+    private EditText urlField;
+    private ProgressDialog progressDialog;
 
     private String uuidParentKey;
     private boolean isPlaylist;
+
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
 
 
     @Override
@@ -75,6 +100,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.isPlaylist = getIntent().getBooleanExtra(IS_PLAYLIST_TAG,false);
 
         if(!this.isPlaylist) {
+            //Loads the New Song Popup.
             setContentView(R.layout.activity_add_new_popup_single_song);
 
             this.downloadButton = findViewById(R.id.textView_download_button);
@@ -113,6 +139,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             });
         }
         else {
+            //Loads the Import Playlist popup.
             setContentView(R.layout.activity_add_new_popup_single_playlist);
 
             this.downloadButton = findViewById(R.id.textView_download_button);
@@ -126,62 +153,88 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             });
         }
 
+
         setFinishOnTouchOutside(true);
+
+        //Locks that ensure that the device stays on during the download processes.
+        PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        this.wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,WAKE_LOCK_TAG);
+        this.wifiLock = ((WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL,LOG_TAG);
+
+        this.progressDialog = new ProgressDialog(this);
+        this.progressDialog.setTitle("Downloading");
+        this.progressDialog.setCanceledOnTouchOutside(false);
     }
 
+
+    /**
+     * Downloads the playlist that was inputted in the url field.
+     */
     private void DownloadPlaylist() {
         String urlInput = this.urlField.getText().toString();
         if(urlInput.isEmpty() || PlatformCompatUtility.PlaylistUrlSource(urlInput) == PlatformCompatUtility.Platform.UNKNOWN) {
             SendToast("Invalid Url.");
             return;
         }
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setTitle("Downloading");
-        progressDialog.setMessage("Preparing for download...");
-        progressDialog.setCanceledOnTouchOutside(false);
-        progressDialog.show();
+
+        StartProgressDialog("Preparing for download...");
+        if(this.wakeLock != null && !this.wakeLock.isHeld()) {
+            this.wakeLock.acquire(120*60*1000L /*120 minutes*/);
+        }
+        if(this.wifiLock != null && !this.wifiLock.isHeld()) {
+            this.wifiLock.acquire();
+        }
         PlatformCompatUtility.DownloadPlaylist(urlInput, new DownloadPlaylistListener() {
             @Override
             public void onComplete(PlaylistInfo playlist) {
-                DataManager.getInstance().CreateNewPlaylist(playlist,false,null);
-                progressDialog.dismiss();
+                if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
+                    DataManager.getInstance().CreateNewPlaylist(playlist,false,uuidParentKey);
+                }
+                else {
+                    DataManager.getInstance().CreateNewPlaylist(playlist,false,null);
+                }
+                HideProgressDialog();
                 SendToast("Complete!");
                 finish();
             }
 
             @Override
             public void onProgressUpdate(int progress, int outOf) {
-                progressDialog.setMessage("Download Progress: " + progress + "/" + outOf);
+                UpdateProgressDialog("Download Progress: " + progress + "/" + outOf);
             }
 
             @Override
             public void onError(int attempt, String error) {
                 if(attempt == -1) {
-                    progressDialog.dismiss();
+                    HideProgressDialog();
                     SendToast(error);
+                    ReleaseLocks();
                 }
                 else {
-                    progressDialog.setMessage(error);
+                    UpdateProgressDialog(error);
                 }
             }
         });
 
     }
 
+    /**
+     * Downloads the song that was inputted in the url field or that was selected
+     * as a file.
+     */
     private void DownloadAudio() {
         Uri uri = this.selectedFile.getValue();
         String urlInput = this.urlField.getText().toString();
-        ProgressDialog progressDialog = new ProgressDialog(this);
-        progressDialog.setTitle("Downloading");
-        progressDialog.setMessage("Preparing for download...");
-        progressDialog.setCanceledOnTouchOutside(false);
 
         if(uri != null) {
-            progressDialog.show();
+            StartProgressDialog("Preparing for download...");
             DataManager.getInstance().DownloadFileFromDirectoryToDirectory(uri, new DownloadListener() {
                 @Override
                 public void onComplete(PlaybackAudioInfo audio) {
-                    progressDialog.dismiss();
+                    if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
+                        DataManager.getInstance().AddSongToPlaylist(uuidParentKey,audio);
+                    }
+                    HideProgressDialog();
                     SendToast("Complete!");
                     finish();
                 }
@@ -191,34 +244,45 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(int attempt, String error) {
-                    progressDialog.dismiss();
+                    HideProgressDialog();
                     SendToast(error);
+                    ReleaseLocks();
                 }
             });
         }
         else if(!urlInput.isEmpty()){
-            progressDialog.show();
+            StartProgressDialog("Preparing for download...");
+            if(this.wakeLock != null && !this.wakeLock.isHeld()) {
+                this.wakeLock.acquire(5*60*1000L /*5 minutes*/);
+            }
+            if(this.wifiLock != null && !this.wifiLock.isHeld()) {
+                this.wifiLock.acquire();
+            }
             DataManager.getInstance().DownloadSongToDirectoryFromUrl(urlInput, new DownloadListener() {
                 @Override
                 public void onComplete(PlaybackAudioInfo audio) {
-                    progressDialog.dismiss();
+                    if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
+                        DataManager.getInstance().AddSongToPlaylist(uuidParentKey,audio);
+                    }
+                    HideProgressDialog();
                     SendToast("Complete!");
                     finish();
                 }
 
                 @Override
                 public void onProgressUpdate(float progress, long etaSeconds) {
-                    progressDialog.setMessage("Download Progress: " + progress);
+                    UpdateProgressDialog("Download Progress: " + progress);
                 }
 
                 @Override
                 public void onError(int attempt, String error) {
                     if(attempt == -1) {
-                        progressDialog.dismiss();
+                        HideProgressDialog();
                         SendToast(error);
+                        ReleaseLocks();
                     }
                     else {
-                        progressDialog.setMessage("Failed, retrying download. Retrying: " + attempt);
+                        UpdateProgressDialog("Failed, retrying download. Retrying: " + attempt);
                     }
                 }
             });
@@ -238,5 +302,48 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         bundle.putString(TOAST_KEY,message);
         msg.setData(bundle);
         this.toastHandler.sendMessage(msg);
+    }
+
+    public void StartProgressDialog(String message) {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(PROGRESS_DIALOG_SHOW_KEY,true);
+        bundle.putString(PROGRESS_DIALOG_UPDATE_KEY,message);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void UpdateProgressDialog(String message) {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putString(PROGRESS_DIALOG_UPDATE_KEY,message);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void HideProgressDialog() {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(PROGRESS_DIALOG_HIDE_KEY,true);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void ReleaseLocks() {
+        if(this.wakeLock != null && this.wakeLock.isHeld()) {
+            this.wakeLock.release();
+        }
+        if(this.wifiLock != null && this.wifiLock.isHeld()) {
+            this.wifiLock.release();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        ReleaseLocks();
+        if(this.progressDialog.isShowing()) {
+            this.progressDialog.dismiss();
+        }
+        super.onDestroy();
     }
 }

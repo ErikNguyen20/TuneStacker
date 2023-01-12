@@ -1,5 +1,6 @@
 package com.example.cloudplaylistmanager.ui.dashboard.fragments;
 
+import android.app.Dialog;
 import android.content.Intent;
 import android.os.Bundle;
 
@@ -14,21 +15,20 @@ import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
-import com.example.cloudplaylistmanager.ui.addNewPopupSingle.AddNewPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedActivity;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -37,7 +37,7 @@ public class MyPlaylistsFragment extends Fragment {
 
     private ArrayList<Pair<String,PlaylistInfo>> myPlaylists;
     private PlaylistRecyclerAdapter playlistAdapter;
-
+    DashboardViewModel viewModel;
 
     public MyPlaylistsFragment() {
         this.myPlaylists = new ArrayList<>();
@@ -63,17 +63,15 @@ public class MyPlaylistsFragment extends Fragment {
                     startActivity(intent);
                 }
                 else {
-                    //Intent intent = new Intent(getActivity(), AddNewPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-                    //intent.putExtra(AddNewPopupSingleActivity.IS_PLAYLIST_TAG,true);
-                    //startActivity(intent);
+                    ShowPlaylistDialog();
                 }
             }
         });
         playlistRecyclerView.setAdapter(this.playlistAdapter);
 
         //Fetches data from the ViewModel.
-        DashboardViewModel viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);
-        viewModel.getMyPlaylists().observe(getViewLifecycleOwner(), new Observer<ArrayList<Pair<String, PlaylistInfo>>>() {
+        this.viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);
+        this.viewModel.getMyPlaylists().observe(getViewLifecycleOwner(), new Observer<ArrayList<Pair<String, PlaylistInfo>>>() {
             @Override
             public void onChanged(ArrayList<Pair<String, PlaylistInfo>> pairs) {
                 if(pairs == null) {
@@ -89,7 +87,43 @@ public class MyPlaylistsFragment extends Fragment {
             }
         });
 
-                Log.e("MyPlaylists", "OnCreateView");
         return view;
+    }
+
+    public void ShowPlaylistDialog() {
+        Dialog dialog = new Dialog(getContext());
+        dialog.setContentView(R.layout.popup_text_input);
+
+        TextView title = dialog.findViewById(R.id.popup_title);
+        EditText name = dialog.findViewById(R.id.edit_text_name);
+        TextView confirm = dialog.findViewById(R.id.textView_confirm_button);
+
+        title.setText(R.string.create_playlist_display);
+        name.setHint(R.string.popup_create_playlist_hint);
+
+        confirm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String inputName = name.getText().toString().trim();
+                if(!inputName.isEmpty()) {
+                    PlaylistInfo newPlaylist = new PlaylistInfo();
+                    newPlaylist.setTitle(inputName);
+
+                    //Creates and updates the data.
+                    String key = DataManager.getInstance().CreateNewPlaylist(newPlaylist, true, null);
+                    viewModel.updateData();
+                    dialog.dismiss();
+                    Toast.makeText(getContext(),"New Playlist Created.",Toast.LENGTH_SHORT).show();
+
+                    //Launches nested playlist view.
+                    Intent intent = new Intent(getActivity(), PlaylistNestedActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,newPlaylist);
+                    intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,key);
+                    startActivity(intent);
+                }
+            }
+        });
+
+        dialog.show();
     }
 }

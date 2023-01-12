@@ -57,7 +57,7 @@ public class DataManager {
     public static final String DEFAULT_THUMBNAIL = DEFAULT_THUMBNAIL_MED;
 
     private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 8;
-    private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 4;
+    private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 5;
 
 
     private static DataManager instance = null;
@@ -249,7 +249,7 @@ public class DataManager {
     public void RenamePlaylist(String key, String newName) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
-            if(playlist.getTitle().equals(newName)) {
+            if(playlist.getTitle().equals(newName) || newName.isEmpty()) {
                 return;
             }
             playlist.setTitle(newName);
@@ -259,7 +259,7 @@ public class DataManager {
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
-            if(playlist.getTitle().equals(newName)) {
+            if(playlist.getTitle().equals(newName) || newName.isEmpty()) {
                 return;
             }
             playlist.setTitle(newName);
@@ -295,21 +295,79 @@ public class DataManager {
      * @param key Key of the playlist that is to be modified from the database.
      * @param audio Newly added audio source.
      */
-    public void AddSongToPlaylist(String key, PlaybackAudioInfo audio) {
+    public boolean AddSongToPlaylist(String key, PlaybackAudioInfo audio) {
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
+            if(playlist.ContainsAudio(audio)) {
+                return false;
+            }
             playlist.AddVideoToPlaylist(audio);
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
-            return;
+            return true;
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
+            if(playlist.ContainsAudio(audio)) {
+                return false;
+            }
             playlist.AddVideoToPlaylist(audio);
             this.importedPlaylistData.put(key,playlist);
             RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            return true;
         }
+        return false;
+    }
+
+    /**
+     * Removes a song from the specified playlist using the audio's name.
+     * @param key Key of the playlist that is to be modified from the database.
+     * @param audioName Name of the audio.
+     * @return If the audio was successfully removed.
+     */
+    public boolean RemoveSongFromPlaylist(String key, String audioName) {
+        if(audioName == null || audioName.isEmpty()) {
+            return false;
+        }
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            boolean success = playlist.RemoveVideo(audioName);
+            if(success) {
+                this.nestedPlaylistData.put(key, playlist);
+                this.dataLastUpdated = UUID.randomUUID().toString();
+            }
+            return success;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        if(playlist != null) {
+            boolean success = playlist.RemoveVideo(audioName);
+            if(success) {
+                this.importedPlaylistData.put(key, playlist);
+                this.dataLastUpdated = UUID.randomUUID().toString();
+            }
+            return success;
+        }
+        return false;
+    }
+
+    /**
+     * Adds an already existing imported playlist into a nested playlist.
+     * @param nested Key of the nested playlist.
+     * @param imported Key of the imported playlist.
+     */
+    public boolean AddImportPlaylistToNested(String nested, String imported) {
+        PlaylistInfo nestedPlaylist = this.nestedPlaylistData.get(nested);
+        PlaylistInfo importedPlaylist = this.importedPlaylistData.get(imported);
+        if(nestedPlaylist != null && importedPlaylist != null) {
+            if(nestedPlaylist.ContainsImportedKey(imported)) {
+                return false;
+            }
+            nestedPlaylist.ImportPlaylist(imported, importedPlaylist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -329,7 +387,8 @@ public class DataManager {
         }
         else {
             PlaylistInfo removedPlaylist = this.nestedPlaylistData.remove(key);
-            if(removedPlaylist == null) {
+            if(removedPlaylist != null) {
+                this.dataLastUpdated = UUID.randomUUID().toString();
                 return;
             }
             removedPlaylist = this.importedPlaylistData.remove(key);
@@ -353,7 +412,7 @@ public class DataManager {
      * @param parentKey If the new playlist is imported and is being added within a nested playlist, declare
      *                  a value for the parentKey, which is the key of the nested playlist.
      */
-    public void CreateNewPlaylist(PlaylistInfo playlist, boolean isNested, @Nullable String parentKey) {
+    public String CreateNewPlaylist(PlaylistInfo playlist, boolean isNested, @Nullable String parentKey) {
         String key = UUID.randomUUID().toString();
         if(isNested) {
             this.nestedPlaylistData.put(key, playlist);
@@ -365,9 +424,11 @@ public class DataManager {
                 if(parentPlaylist != null) {
                     parentPlaylist.ImportPlaylist(key, playlist);
                 }
+                this.nestedPlaylistData.put(parentKey,parentPlaylist);
             }
         }
         this.dataLastUpdated = UUID.randomUUID().toString();
+        return key;
     }
 
     /**
@@ -475,15 +536,22 @@ public class DataManager {
                     return;
                 }
             }
-            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + '/' + audio.getTitle() + ".opus");
+            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             audio.setOrigin(url);
 
             //Updates the thumbnail source and type.
             if(audio.getThumbnailSource() != null) {
-                File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle());
-                if(newThumbnail != null) {
-                    audio.setThumbnailSource(newThumbnail.getAbsolutePath());
+                File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle());
+                if(searchFile == null) {
+                    File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle() + ".bin");
+                    if (newThumbnail != null) {
+                        audio.setThumbnailSource(newThumbnail.getAbsolutePath());
+                        audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+                    }
+                }
+                else {
+                    audio.setThumbnailSource(searchFile.getAbsolutePath());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
                 }
             }
@@ -509,7 +577,7 @@ public class DataManager {
 
         File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
 
-        String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0];
+        String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0].trim();
         if(GetFileFromDirectory(this.appMusicDirectory,destFileName) != null) {
             downloadListener.onError(-1,"Song already exists.");
             return;
@@ -532,7 +600,7 @@ public class DataManager {
             audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
             audio.setAudioSource(fileDestination.getAbsolutePath());
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
-            audio.setTitle(fileDestination.getName().split("\\.(?=[^\\.]+$)")[0]);
+            audio.setTitle(fileDestination.getName().split("\\.(?=[^\\.]+$)")[0].trim());
             audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.UNKNOWN);
 
             this.dataLastUpdated = UUID.randomUUID().toString();
@@ -641,7 +709,7 @@ public class DataManager {
         HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory);
         for(File file : files) {
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
-            String title = file.getName().split("\\.(?=[^\\.]+$)")[0];
+            String title = file.getName().split("\\.(?=[^\\.]+$)")[0].trim();
 
             if(directoryMap.containsKey(title)) {
                 audio.setThumbnailSource(directoryMap.get(title).getAbsolutePath());
@@ -670,9 +738,28 @@ public class DataManager {
         }
         HashMap<String,File> directoryMap = new HashMap<>();
         for(File file : files) {
-            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
+            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0].trim(),file);
         }
         return directoryMap;
+    }
+
+    /**
+     * Checks the specified directory for a file of the given name.
+     * @param directory File directory that will be searched.
+     * @param fileName Name of the file.
+     * @return File by that name.
+     */
+    public File DoesFileExistWithName(File directory, String fileName) {
+        File[] files = directory.listFiles();
+        if(files == null) {
+            return null;
+        }
+        for(File file : files) {
+            if(fileName.equals(file.getName().split("\\.(?=[^\\.]+$)")[0].trim())) {
+                return file;
+            }
+        }
+        return null;
     }
 
     /**
@@ -732,6 +819,11 @@ public class DataManager {
         }
     }
 
+    /**
+     * Converts a hash map of playlists into a sorted arraylist.
+     * @param map Hashmap of playlists.
+     * @return Sorted Arraylist of playlists.
+     */
     public ArrayList<Pair<String, PlaylistInfo>> PlaylistMapToArraylist(HashMap<String, PlaylistInfo> map) {
         ArrayList<Pair<String, PlaylistInfo>> pairArray = new ArrayList<>();
 
@@ -753,6 +845,11 @@ public class DataManager {
         return pairArray;
     }
 
+    /**
+     * Gets the name of the file with a Uri source.
+     * @param uri File uri source.
+     * @return Name of the file.
+     */
     public String GetFileNameFromUri(Uri uri) {
         if(uri == null) {
             return null;

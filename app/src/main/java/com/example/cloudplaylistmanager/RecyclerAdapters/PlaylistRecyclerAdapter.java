@@ -48,18 +48,18 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
         LayoutInflater inflater = LayoutInflater.from(this.context);
         if(viewType == ADD_ITEM_TOKEN) {
             View view = inflater.inflate(R.layout.single_line_item_add, parent, false);
-            return new ViewHolderAdd(view);
+            return new PlaylistRecyclerAdapter.ViewHolderAdd(view);
         }
         else {
             View view = inflater.inflate(R.layout.double_line_item, parent, false);
-            return new ViewHolderItem(view);
+            return new PlaylistRecyclerAdapter.ViewHolderItem(view);
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if(holder.getItemViewType() == ADD_ITEM_TOKEN) {
-            ViewHolderAdd viewHolder = (ViewHolderAdd) holder;
+            PlaylistRecyclerAdapter.ViewHolderAdd viewHolder = (PlaylistRecyclerAdapter.ViewHolderAdd) holder;
             viewHolder.title.setText(this.addButtonResId);
         }
         else {
@@ -67,7 +67,7 @@ public class PlaylistRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
                 return;
             }
 
-            ViewHolderItem viewHolder = (ViewHolderItem) holder;
+            PlaylistRecyclerAdapter.ViewHolderItem viewHolder = (PlaylistRecyclerAdapter.ViewHolderItem) holder;
             PlaylistInfo currentPlaylist = this.playlist.get(position - 1);
             viewHolder.title.setText(currentPlaylist.getTitle());
             viewHolder.other.setText(new String(" " + currentPlaylist.getAllVideos().size() + " songs"));

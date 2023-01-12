@@ -32,13 +32,6 @@ public class DashboardViewModel extends ViewModel {
         this.lastUpdate = new MutableLiveData<>();
         this.lastUpdate.postValue(null);
 
-        //We will initialize this data in this constructor. (TEST VALUES)
-        ArrayList<Pair<String,PlaylistInfo>> test = new ArrayList<>();
-        PlaylistInfo testItem = new PlaylistInfo();
-        testItem.setTitle("Test LOL");
-        test.add(new Pair<>("lmao",testItem));
-        this.myPlaylists.postValue(test);
-
         updateData();
     }
 
@@ -62,12 +55,12 @@ public class DashboardViewModel extends ViewModel {
 
             ArrayList<Pair<String,PlaylistInfo>> fetchedImportsPlaylist = DataManager.getInstance().GetImportedPlaylists();
             if(fetchedImportsPlaylist != null) {
-                this.importedPlaylists.setValue(fetchedImportsPlaylist);
+                this.importedPlaylists.postValue(fetchedImportsPlaylist);
             }
 
             ArrayList<Pair<String,PlaylistInfo>> fetchedMyPlaylists = DataManager.getInstance().GetNestedPlaylists();
             if(fetchedMyPlaylists != null) {
-                this.myPlaylists.setValue(fetchedMyPlaylists);
+                this.myPlaylists.postValue(fetchedMyPlaylists);
             }
 
             PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();

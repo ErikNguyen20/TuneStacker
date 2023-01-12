@@ -114,6 +114,7 @@ public class PlatformCompatUtility {
                 });
                 break;
             default:
+                latch.countDown();
                 break;
         }
         try {

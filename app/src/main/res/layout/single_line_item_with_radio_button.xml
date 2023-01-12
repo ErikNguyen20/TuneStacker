@@ -26,7 +26,7 @@
 
         <TextView
             android:id="@+id/textView_item_title"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_margin="6dp"
             android:layout_weight="1"
@@ -37,16 +37,13 @@
             android:ellipsize="end"
             android:textSize="16sp" />
 
-        <ImageView
-            android:id="@+id/imageView_item_options"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
+        <CheckBox
+            android:id="@+id/checkBox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:layout_margin="5dp"
-            android:scaleType="fitCenter"
-            app:tint="?attr/colorSecondary"
-            android:layout_gravity="center_vertical"
-            android:background="@android:color/transparent"
-            android:src="@drawable/ic_baseline_more_vert_24" />
+            android:gravity="center_vertical"
+            android:clickable="false" />
 
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>
