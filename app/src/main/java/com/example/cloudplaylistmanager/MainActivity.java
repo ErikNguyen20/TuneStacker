@@ -57,26 +57,27 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        if(!CheckPermission()) {
+            RequestPermission();
+        }
+
         DataManager.Initialize(getApplicationContext());
+
+        if(true || FirebaseAuth.getInstance().getCurrentUser() != null) {
+            //Take user to the landing page.
+            startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-
-        if(!CheckPermission()) {
-            RequestPermission();
-        }
-
-        if(FirebaseAuth.getInstance().getCurrentUser() != null) {
-            //Take user to the landing page.
-            //startActivity(new Intent(MainActivity.this,RegisterActivity.class));
-        }
-        startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
     }
 
     @Override
     protected void onStop() {
+        DataManager.getInstance().SaveImportedData();
+        DataManager.getInstance().SaveNestedData();
         super.onStop();
     }
 

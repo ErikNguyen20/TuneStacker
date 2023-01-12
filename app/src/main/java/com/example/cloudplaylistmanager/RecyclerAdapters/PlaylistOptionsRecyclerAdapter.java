@@ -48,7 +48,7 @@ public class PlaylistOptionsRecyclerAdapter extends RecyclerView.Adapter<Recycle
             return new PlaylistOptionsRecyclerAdapter.ViewHolderAdd(view);
         }
         else {
-            View view = inflater.inflate(R.layout.double_line_item, parent, false);
+            View view = inflater.inflate(R.layout.double_line_item_with_options, parent, false);
             return new PlaylistOptionsRecyclerAdapter.ViewHolderItem(view);
         }
     }
@@ -143,6 +143,7 @@ public class PlaylistOptionsRecyclerAdapter extends RecyclerView.Adapter<Recycle
                             return true;
                         }
                     });
+                    popupMenu.show();
                 }
             });
 

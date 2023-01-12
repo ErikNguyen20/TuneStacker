@@ -120,7 +120,15 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.adapter = new SongsOptionsRecyclerAdapter(this, this.playlistInfo, false, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
+                if(itemId == R.id.export_option) {
 
+                } else if(itemId == R.id.backup_option) {
+
+                } else if(itemId == R.id.delete_option) {
+
+                } else if(itemId == R.id.sync_option) {
+
+                }
             }
 
             @Override

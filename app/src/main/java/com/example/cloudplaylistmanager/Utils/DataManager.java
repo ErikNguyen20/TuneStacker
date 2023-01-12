@@ -118,9 +118,9 @@ public class DataManager {
     }
 
     /**
-     * Saves all playlists data to {@link SharedPreferences}.
+     * Saves all nested playlists data to {@link SharedPreferences}.
      */
-    public void SaveData() {
+    public void SaveNestedData() {
         SharedPreferences.Editor editor = this.sharedPreferences.edit();
 
         Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
@@ -129,6 +129,28 @@ public class DataManager {
 
         editor.putString(SAVED_PREFERENCES_NESTED_TAG,jsonNestedResult);
         editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
+        editor.apply();
+    }
+
+    /**
+     * Saves all imported playlists data to {@link SharedPreferences}.
+     */
+    public void SaveImportedData() {
+        SharedPreferences.Editor editor = this.sharedPreferences.edit();
+
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
+        String jsonImportResult = gson.toJson(this.importedPlaylistData);
+
+        editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
+        editor.apply();
+    }
+
+    /**
+     * Clears all data from {@link SharedPreferences}.
+     */
+    public void ClearAllData() {
+        SharedPreferences.Editor editor = this.sharedPreferences.edit();
+        editor.clear();
         editor.apply();
     }
 
@@ -182,27 +204,38 @@ public class DataManager {
      * @param key Key of the playlist that is to be fetched from the database.
      */
     public void RefreshNestedPlaylist(@Nullable String key) {
-        Thread thread = new Thread(() -> {
-            if(key != null) {
-                PlaylistInfo playlist = this.nestedPlaylistData.get(key);
-                if(playlist != null) {
-                    playlist.ClearImportedPlaylists();
-                    for(String storedKey : playlist.GetImportedPlaylistKeys()) {
-                        if(this.importedPlaylistData.containsKey(storedKey)) {
-                            playlist.ImportPlaylist(storedKey, this.importedPlaylistData.get(storedKey));
-                        }
+        if(key != null) {
+            PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+            if(playlist != null) {
+                playlist.ClearImportedPlaylists();
+
+                ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
+                for(int index = 0; index < playlistKeys.size(); index++) {
+                    if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
+                        playlist.ImportPlaylistWithoutUpdatingKeys(playlistKeys.get(index), this.importedPlaylistData.get(playlistKeys.get(index)));
                     }
-                    this.nestedPlaylistData.put(key,playlist);
                 }
+                this.nestedPlaylistData.put(key,playlist);
             }
-            else {//Update all playlists
-                for(String storedKey : this.nestedPlaylistData.keySet()) {
-                    RefreshNestedPlaylist(storedKey);
+        }
+        else {//Update all playlists
+            HashMap<String, PlaylistInfo> otherPlaylistData = new HashMap<>();
+            for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
+                PlaylistInfo playlist = entry.getValue();
+                playlist.ClearImportedPlaylists();
+
+                ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
+                for(int index = 0; index < playlistKeys.size(); index++) {
+                    if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
+                        playlist.ImportPlaylistWithoutUpdatingKeys(playlistKeys.get(index), this.importedPlaylistData.get(playlistKeys.get(index)));
+                    }
                 }
+                otherPlaylistData.put(entry.getKey(), playlist);
             }
-            this.dataLastUpdated = UUID.randomUUID().toString();
-        });
-        thread.start();
+            this.nestedPlaylistData.clear();
+            this.nestedPlaylistData.putAll(otherPlaylistData);
+        }
+        this.dataLastUpdated = UUID.randomUUID().toString();
     }
 
     /**
@@ -255,6 +288,7 @@ public class DataManager {
             playlist.setTitle(newName);
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveNestedData();
             return;
         }
         playlist = this.importedPlaylistData.get(key);
@@ -266,6 +300,7 @@ public class DataManager {
             this.importedPlaylistData.put(key,playlist);
             RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveImportedData();
         }
     }
 
@@ -304,6 +339,7 @@ public class DataManager {
             playlist.AddVideoToPlaylist(audio);
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveNestedData();
             return true;
         }
         playlist = this.importedPlaylistData.get(key);
@@ -315,6 +351,7 @@ public class DataManager {
             this.importedPlaylistData.put(key,playlist);
             RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveImportedData();
             return true;
         }
         return false;
@@ -336,6 +373,7 @@ public class DataManager {
             if(success) {
                 this.nestedPlaylistData.put(key, playlist);
                 this.dataLastUpdated = UUID.randomUUID().toString();
+                SaveNestedData();
             }
             return success;
         }
@@ -345,6 +383,7 @@ public class DataManager {
             if(success) {
                 this.importedPlaylistData.put(key, playlist);
                 this.dataLastUpdated = UUID.randomUUID().toString();
+                SaveImportedData();
             }
             return success;
         }
@@ -365,6 +404,7 @@ public class DataManager {
             }
             nestedPlaylist.ImportPlaylist(imported, importedPlaylist);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveNestedData();
             return true;
         }
         return false;
@@ -376,33 +416,43 @@ public class DataManager {
      * @param parentKey If the new playlist is imported and is being removed from within a nested playlist,
      *                  declare a value for the parentKey, which is the key of the nested playlist.
      */
-    public void RemovePlaylist(String key, @Nullable String parentKey) {
+    public boolean RemovePlaylist(String key, @Nullable String parentKey) {
         if(parentKey != null) {
             PlaylistInfo playlist = this.nestedPlaylistData.get(parentKey);
             if(playlist != null) {
                 playlist.RemoveImportedPlaylist(key);
                 this.nestedPlaylistData.put(parentKey,playlist);
                 this.dataLastUpdated = UUID.randomUUID().toString();
+                SaveNestedData();
+                return true;
             }
         }
         else {
             PlaylistInfo removedPlaylist = this.nestedPlaylistData.remove(key);
             if(removedPlaylist != null) {
                 this.dataLastUpdated = UUID.randomUUID().toString();
-                return;
+                SaveNestedData();
+                return true;
             }
             removedPlaylist = this.importedPlaylistData.remove(key);
             if(removedPlaylist == null) {
-                return;
+                return false;
             }
+
             //Remove from all other nested playlists
+            HashMap<String, PlaylistInfo> copyOfNested = new HashMap<>();
             for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
                 PlaylistInfo value = entry.getValue();
                 value.RemoveImportedPlaylist(key);
-                this.nestedPlaylistData.put(entry.getKey(), value);
+                copyOfNested.put(entry.getKey(), value);
             }
+            this.nestedPlaylistData.putAll(copyOfNested);
+
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveImportedData();
+            return true;
         }
+        return false;
     }
 
     /**
@@ -426,7 +476,9 @@ public class DataManager {
                 }
                 this.nestedPlaylistData.put(parentKey,parentPlaylist);
             }
+            SaveImportedData();
         }
+        SaveNestedData();
         this.dataLastUpdated = UUID.randomUUID().toString();
         return key;
     }
@@ -507,8 +559,8 @@ public class DataManager {
             while(videoInfoFetchAttemptNumber <= MAX_FETCH_AUDIO_INFO_RETRIES && !success) {
                 try {
                     VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
-                    audio.setTitle(streamInfo.getTitle().trim());
-                    audio.setAuthor(streamInfo.getUploader().trim());
+                    audio.setTitle(streamInfo.getTitle());
+                    audio.setAuthor(streamInfo.getUploader());
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
@@ -529,7 +581,7 @@ public class DataManager {
                 int endIndex = responseString.indexOf(".opus");
                 if(startIndex != -1 && endIndex != -1) {
                     String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
-                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5).trim());
+                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5));
                 }
                 else {
                     downloadFromUrlListener.onError(-1,"Could not find reference to Downloaded File.");
@@ -577,7 +629,7 @@ public class DataManager {
 
         File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
 
-        String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0].trim();
+        String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0];
         if(GetFileFromDirectory(this.appMusicDirectory,destFileName) != null) {
             downloadListener.onError(-1,"Song already exists.");
             return;
@@ -600,7 +652,7 @@ public class DataManager {
             audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
             audio.setAudioSource(fileDestination.getAbsolutePath());
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
-            audio.setTitle(fileDestination.getName().split("\\.(?=[^\\.]+$)")[0].trim());
+            audio.setTitle(fileDestination.getName().split("\\.(?=[^\\.]+$)")[0]);
             audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.UNKNOWN);
 
             this.dataLastUpdated = UUID.randomUUID().toString();
@@ -709,7 +761,7 @@ public class DataManager {
         HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory);
         for(File file : files) {
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
-            String title = file.getName().split("\\.(?=[^\\.]+$)")[0].trim();
+            String title = file.getName().split("\\.(?=[^\\.]+$)")[0];
 
             if(directoryMap.containsKey(title)) {
                 audio.setThumbnailSource(directoryMap.get(title).getAbsolutePath());
@@ -738,7 +790,7 @@ public class DataManager {
         }
         HashMap<String,File> directoryMap = new HashMap<>();
         for(File file : files) {
-            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0].trim(),file);
+            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
         }
         return directoryMap;
     }
@@ -755,7 +807,7 @@ public class DataManager {
             return null;
         }
         for(File file : files) {
-            if(fileName.equals(file.getName().split("\\.(?=[^\\.]+$)")[0].trim())) {
+            if(fileName.equals(file.getName().split("\\.(?=[^\\.]+$)")[0])) {
                 return file;
             }
         }

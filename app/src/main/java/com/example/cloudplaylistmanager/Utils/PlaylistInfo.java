@@ -20,7 +20,7 @@ public class PlaylistInfo implements Serializable {
     private long lastViewed;
     @Expose
     private ArrayList<PlaybackAudioInfo> insertedVideos;
-    private ArrayList<Pair<String, PlaylistInfo>> importedPlaylists;
+    private ArrayList<SerializablePair<String, PlaylistInfo>> importedPlaylists;
     @Expose
     private ArrayList<String> importedPlaylistsKeys;
     private LinkedHashSet<PlaybackAudioInfo> allVideos;
@@ -41,7 +41,7 @@ public class PlaylistInfo implements Serializable {
         }
         this.allVideos.clear();
         this.allVideos.addAll(this.insertedVideos);
-        for(Pair<String, PlaylistInfo> pair : importedPlaylists) {
+        for(SerializablePair<String, PlaylistInfo> pair : importedPlaylists) {
             this.allVideos.addAll(pair.second.getAllVideos());
         }
     }
@@ -104,12 +104,17 @@ public class PlaylistInfo implements Serializable {
     }
 
     public void ImportPlaylist(String key, PlaylistInfo other) {
-        this.importedPlaylists.add(new Pair<>(key, other));
+        this.importedPlaylists.add(new SerializablePair<>(key, other));
         this.importedPlaylistsKeys.add(key);
         UpdateAllVideos();
     }
 
-    public ArrayList<Pair<String, PlaylistInfo>> GetImportedPlaylists() {
+    public void ImportPlaylistWithoutUpdatingKeys(String key, PlaylistInfo other) {
+        this.importedPlaylists.add(new SerializablePair<>(key, other));
+        UpdateAllVideos();
+    }
+
+    public ArrayList<SerializablePair<String, PlaylistInfo>> GetImportedPlaylists() {
         return this.importedPlaylists;
     }
 

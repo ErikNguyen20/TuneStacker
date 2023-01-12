@@ -13,11 +13,14 @@ import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+import com.example.cloudplaylistmanager.Utils.SerializablePair;
 import com.example.cloudplaylistmanager.ui.addExistingPopupSingle.AddExistingPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedActivity;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedViewModel;
@@ -30,7 +33,9 @@ import java.util.ArrayList;
  */
 public class ImportsFragment extends Fragment {
 
-    private ArrayList<Pair<String, PlaylistInfo>> playlists;
+    private PlaylistNestedViewModel viewModel;
+
+    private ArrayList<SerializablePair<String, PlaylistInfo>> playlists;
     private String parentUuidKey;
     private PlaylistOptionsRecyclerAdapter adapter;
 
@@ -52,7 +57,22 @@ public class ImportsFragment extends Fragment {
         this.adapter = new PlaylistOptionsRecyclerAdapter(getContext(), null, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
+                if(itemId == R.id.export_option) {
 
+                } else if(itemId == R.id.backup_option) {
+
+                } else if(itemId == R.id.delete_option) {
+                    boolean success = DataManager.getInstance().RemovePlaylist(playlists.get(position).first, parentUuidKey);
+                    if(success) {
+                        viewModel.updateData(parentUuidKey);
+                        Toast.makeText(getActivity(),"Playlist Removed.",Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        Toast.makeText(getActivity(),"Failed to Remove Playlist.",Toast.LENGTH_SHORT).show();
+                    }
+                } else if(itemId == R.id.sync_option) {
+
+                }
             }
 
             @Override
@@ -74,8 +94,8 @@ public class ImportsFragment extends Fragment {
         recyclerView.setAdapter(this.adapter);
 
         //Fetches data from the ViewModel.
-        PlaylistNestedViewModel viewModel = new ViewModelProvider(requireActivity()).get(PlaylistNestedViewModel.class);
-        viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<Pair<String, PlaylistInfo>>() {
+        this.viewModel = new ViewModelProvider(requireActivity()).get(PlaylistNestedViewModel.class);
+        this.viewModel.getPlaylistData().observe(getViewLifecycleOwner(), new Observer<Pair<String, PlaylistInfo>>() {
             @Override
             public void onChanged(Pair<String, PlaylistInfo> stringPlaylistInfoPair) {
                 if(stringPlaylistInfoPair == null) {
@@ -85,7 +105,7 @@ public class ImportsFragment extends Fragment {
                 parentUuidKey = stringPlaylistInfoPair.first;
 
                 ArrayList<PlaylistInfo> data = new ArrayList<>();
-                for(Pair<String, PlaylistInfo> value : stringPlaylistInfoPair.second.GetImportedPlaylists()) {
+                for(SerializablePair<String, PlaylistInfo> value : stringPlaylistInfoPair.second.GetImportedPlaylists()) {
                     data.add(value.second);
                 }
                 adapter.updateData(data);

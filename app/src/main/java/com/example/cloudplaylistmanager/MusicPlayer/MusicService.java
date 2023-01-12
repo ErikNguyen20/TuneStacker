@@ -333,6 +333,9 @@ public class MusicService extends Service implements
             e.printStackTrace();
             //If there is an error preparing this media, skip it to the next one.
             if(this.errorPreparingPositions[this.currentPlayPosition]) {
+                if(this.onUpdatePlayerListener != null) {
+                    this.onUpdatePlayerListener.onEnd();
+                }
                 stopSelf();
             }
             else {
