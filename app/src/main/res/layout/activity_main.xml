@@ -28,32 +28,18 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             app:srcCompat="@drawable/tune_stacker_brand"
-            app:tint="?attr/colorSecondary" />
+            app:tint="?attr/colorPrimary" />
 
-        <android.widget.Button
-            android:id="@+id/button_login"
+        <TextView
+            android:id="@+id/textView3"
             android:layout_width="match_parent"
-            android:layout_height="50dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/button_background_primary"
-            android:text="@string/login_button"
+            android:text="Loading..."
             android:textColor="?attr/colorSecondary"
-            android:textSize="20sp" />
+            android:textSize="28sp"
+            android:textAlignment="center" />
 
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="16dp"
-            android:layout_weight="1" />
-
-        <android.widget.Button
-            android:id="@+id/button_register"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:layout_weight="1"
-            android:background="@drawable/button_background"
-            android:text="@string/register_button"
-            android:textColor="?attr/colorSecondary"
-            android:textSize="20sp" />
 
     </LinearLayout>
 

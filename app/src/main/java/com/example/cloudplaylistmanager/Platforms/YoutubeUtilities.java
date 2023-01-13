@@ -30,6 +30,14 @@ public class YoutubeUtilities {
     private static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
 
 
+    /**
+     * Given two playlists that originate from the same source, but may be out of sync, find the
+     * audios that have to be added to the local playlist in order to be in sync with the fetched
+     * playlist.
+     * @param fetchedPlaylist Most updated playlist.
+     * @param localPlaylist Potentially out of date playlist.
+     * @return Songs that need to be added to the local playlist.
+     */
     public static ArrayList<PlaybackAudioInfo> Sync(PlaylistInfo fetchedPlaylist, PlaylistInfo localPlaylist) {
         if(!fetchedPlaylist.getLinkSource().equals(localPlaylist.getLinkSource())) {
             return null;

@@ -21,14 +21,9 @@ import android.view.View;
 import android.widget.Button;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
-import com.google.firebase.auth.FirebaseAuth;
 
 public class MainActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_CODE = 100;
-
-    private Button registerButton;
-    private Button loginButton;
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,23 +34,11 @@ public class MainActivity extends AppCompatActivity {
         if(actionBar != null) {
             actionBar.hide();
         }
+    }
 
-        this.loginButton = findViewById(R.id.button_login);
-        this.registerButton = findViewById(R.id.button_register);
-
-        this.loginButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this,LoginActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-            }
-        });
-
-        this.registerButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this,RegisterActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-            }
-        });
+    @Override
+    protected void onStart() {
+        super.onStart();
 
         if(!CheckPermission()) {
             RequestPermission();
@@ -63,15 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
         DataManager.Initialize(getApplicationContext());
 
-        if(true || FirebaseAuth.getInstance().getCurrentUser() != null) {
-            //Take user to the landing page.
-            startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
-        }
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
+        startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
     }
 
     @Override

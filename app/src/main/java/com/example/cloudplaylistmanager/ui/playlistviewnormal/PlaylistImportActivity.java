@@ -157,8 +157,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
 
-                } else if(itemId == R.id.backup_option) {
-
                 } else if(itemId == R.id.delete_option) {
                     boolean success = DataManager.getInstance().RemoveSongFromPlaylist(uuidKey,optional);
                     if(success) {
@@ -168,8 +166,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
                     else {
                         Toast.makeText(PlaylistImportActivity.this,"Failed to Remove Song.",Toast.LENGTH_SHORT).show();
                     }
-                } else if(itemId == R.id.sync_option) {
-
                 }
             }
 
@@ -261,8 +257,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
                     }
                 });
             }
-        } else if(id == R.id.backup_option) {
-
         } else if(id == R.id.delete_option) {
             DataManager.getInstance().RemovePlaylist(this.uuidKey,this.uuidParentKey);
             this.finish();

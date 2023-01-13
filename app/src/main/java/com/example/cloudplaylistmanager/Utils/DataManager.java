@@ -1,13 +1,21 @@
 package com.example.cloudplaylistmanager.Utils;
 
 import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.util.Pair;
+import android.webkit.MimeTypeMap;
+
+import androidx.annotation.Nullable;
 
 import com.androidnetworking.AndroidNetworking;
 import com.androidnetworking.common.ANRequest;
@@ -30,6 +38,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,8 +50,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
-import javax.annotation.Nullable;
-
 
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
@@ -50,7 +57,7 @@ public class DataManager {
     private static final String SAVED_PREFERENCES_IMPORT_TAG = "import";
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
-    private static final String LOCAL_DIRECTORY_CACHE = "cache";
+    private static final String EXPORT_DIRECTORY_NAME = "tunestacker-exports";
     private static final String DEFAULT_THUMBNAIL_LOW = "default_thumbnail_low";
     private static final String DEFAULT_THUMBNAIL_MED = "default_thumbnail_med";
     private static final String DEFAULT_THUMBNAIL_HIGH = "default_thumbnail_high";
@@ -62,28 +69,33 @@ public class DataManager {
 
     private static DataManager instance = null;
     private boolean downloaderInitialized;
-    private YoutubeUtilities YtUtilities;
     private File appMusicDirectory;
-    private File appCacheDirectory;
     private File appImageDirectory;
+    private File exportDirectory;
     private SharedPreferences sharedPreferences;
     private ContentResolver contentResolver;
+    //private MediaScannerConnection mediaScannerConnection;
 
     private String dataLastUpdated;
     private HashMap<String, PlaylistInfo> nestedPlaylistData;  //key is UUID
     private HashMap<String, PlaylistInfo> importedPlaylistData;//key is UUID
+    private String lastConstructedLocalPlaylist;
+    private PlaylistInfo constructedLocalDataPlaylist;
+    private final Context context;
 
 
     private DataManager(Context context) {
-        this.YtUtilities = new YoutubeUtilities();
+        this.context = context;
+
         AndroidNetworking.initialize(context);
         try {
             this.appMusicDirectory = GetLocalMusicDirectory(context);
             this.appImageDirectory = GetLocalImageDirectory(context);
-            this.appCacheDirectory = GetLocalCacheDirectory(context);
+            this.exportDirectory = GetExportsDirectory(context);
             this.dataLastUpdated = UUID.randomUUID().toString();
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
             this.contentResolver = context.getContentResolver();
+
 
             YoutubeDL.getInstance().init(context);
             FFmpeg.getInstance().init(context);
@@ -91,6 +103,9 @@ public class DataManager {
 
             LoadImportedPlaylistsData();
             LoadNestedPlaylistsData();
+
+            this.lastConstructedLocalPlaylist = UUID.randomUUID().toString();
+            this.constructedLocalDataPlaylist = ConstructPlaylistFromLocalFiles();
         } catch(YoutubeDLException e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             this.downloaderInitialized = false;
@@ -546,36 +561,34 @@ public class DataManager {
                 }
             }
 
-
-            //Preforms a download operation.
-            request = new YoutubeDLRequest(url);
-            request.addOption("-x");
-            request.addOption("--no-playlist");
-            request.addOption("--retries",10);
-            request.addOption("--no-check-certificate");
-            request.addOption("--no-mtime");
-            request.addOption("--audio-format", "opus");
-
             if(successInfo) {
                 File searchFile = DoesFileExistWithName(this.appMusicDirectory,audio.getTitle());
                 if(searchFile != null) {
                     //If the file already exists, then don't re-download it.
                     successDownload = true;
                 }
-                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".%(ext)s");
             }
             else {
-                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + "%(title)s.%(ext)s");
+                downloadFromUrlListener.onError(-1,"Failed to fetch audio information.");
             }
 
-            String responseString = null;
+            //Performs a download operation.
+            request = new YoutubeDLRequest(url);
+            request.addOption("-x");
+            request.addOption("--no-playlist");
+            request.addOption("--retries",10);
+            request.addOption("--no-check-certificate");
+            request.addOption("--no-mtime");
+            request.addOption("--embed-thumbnail");
+            request.addOption("--audio-format", "opus");
+            request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".%(ext)s");
+
             int downloadAttemptNumber = 1;
             while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !successDownload) {
                 try {
                     YoutubeDLResponse response = YoutubeDL.getInstance().execute(request, (float progress, long etaSeconds, String line) -> {
                         downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
                     });
-                    responseString = response.getOut();
 
                     successDownload = true;
                 } catch (YoutubeDLException | InterruptedException e) {
@@ -593,20 +606,6 @@ public class DataManager {
             }
 
 
-            //Sets fallback audio parameters.
-            if(!successInfo) {
-                audio = new PlaybackAudioInfo();
-                int startIndex = responseString.indexOf("[ExtractAudio]");
-                int endIndex = responseString.indexOf(".opus");
-                if(startIndex != -1 && endIndex != -1) {
-                    String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
-                    audio.setTitle(ValidateFileName(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5)));
-                }
-                else {
-                    downloadFromUrlListener.onError(-1,"Could not find reference to Downloaded File.");
-                    return;
-                }
-            }
             audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             audio.setOrigin(url);
@@ -666,6 +665,7 @@ public class DataManager {
             }
 
             inputStream.close();
+            outputStream.flush();
             outputStream.close();
 
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
@@ -684,9 +684,71 @@ public class DataManager {
         }
     }
 
-    public void VerifyData() {
-        //This will check every song within the playlists to see if the
-        //song exists within the local file directory.
+    /**
+     *
+     */
+    public void ExportSong(PlaybackAudioInfo audio) {
+        File audioFile = GetFileFromDirectory(this.appMusicDirectory,audio.getTitle());
+        if(audioFile == null) {
+            return;
+        }
+        try {
+            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ContentValues contentValues = new ContentValues();
+                contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, audio.getTitle());
+                contentValues.put(MediaStore.MediaColumns.MIME_TYPE, GetMimeType(audioFile,"audio/*"));
+                contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + File.separator + EXPORT_DIRECTORY_NAME);
+
+                Uri audioUri = this.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, contentValues);
+                OutputStream audioOutputStream = this.contentResolver.openOutputStream(audioUri);
+                FileInputStream audioInputStream = new FileInputStream(audioFile);
+
+                byte[] byteArrayBuffer = new byte[1024];
+                int length;
+                while ((length = audioInputStream.read(byteArrayBuffer)) > 0) {
+                    audioOutputStream.write(byteArrayBuffer, 0, length);
+                }
+
+                audioInputStream.close();
+                audioOutputStream.flush();
+                audioOutputStream.close();
+
+                MediaScannerConnection.scanFile(this.context, new String[]{audioUri.getPath()}, null,
+                        new MediaScannerConnection.OnScanCompletedListener() {
+                    @Override
+                    public void onScanCompleted(String s, Uri uri) {
+                        Log.e(LOG_TAG, "Media Scan Complete.");
+                    }
+                });
+            }
+            else {
+                File fileDestination = new File(this.exportDirectory, audio.getTitle());
+
+                FileInputStream audioInputStream = new FileInputStream(audioFile);
+                OutputStream audioOutputStream = new FileOutputStream(fileDestination);
+
+                byte[] byteArrayBuffer = new byte[1024];
+                int length;
+                while((length = audioInputStream.read(byteArrayBuffer)) > 0) {
+                    audioOutputStream.write(byteArrayBuffer,0,length);
+                }
+
+                audioInputStream.close();
+                audioOutputStream.flush();
+                audioOutputStream.close();
+
+                MediaScannerConnection.scanFile(this.context, new String[]{fileDestination.getPath()}, null,
+                        new MediaScannerConnection.OnScanCompletedListener() {
+                    @Override
+                    public void onScanCompleted(String s, Uri uri) {
+                        Log.e(LOG_TAG, "Media Scan Complete.");
+                    }
+                });
+            }
+        } catch (Exception e) {
+            Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -772,6 +834,10 @@ public class DataManager {
      * @return PlaylistInfo
      */
     public PlaylistInfo ConstructPlaylistFromLocalFiles() {
+        if(this.lastConstructedLocalPlaylist.equals(this.dataLastUpdated)) {
+            return this.constructedLocalDataPlaylist;
+        }
+
         File[] files = this.appMusicDirectory.listFiles();
         if(files == null) {
             return null;
@@ -794,6 +860,8 @@ public class DataManager {
             playlistInfo.AddVideoToPlaylist(audio);
         }
 
+        this.lastConstructedLocalPlaylist = this.dataLastUpdated;
+        this.constructedLocalDataPlaylist = playlistInfo;
         return playlistInfo;
     }
 
@@ -810,7 +878,9 @@ public class DataManager {
         }
         HashMap<String,File> directoryMap = new HashMap<>();
         for(File file : files) {
-            directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
+            if(GetMimeType(file,"").contains("audio")) {
+                directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
+            }
         }
         return directoryMap;
     }
@@ -863,17 +933,18 @@ public class DataManager {
     }
 
     /**
-     * Gets the Cache Directory on the application.
+     * Gets the Image Directory on the application.
      * Assumes that permissions have been granted to read/write in the external storage.
      * @param context Context of the application.
      * @return File directory path.
      */
-    private File GetLocalCacheDirectory(Context context) {
-        File appCacheDirectory = context.getExternalFilesDir(DataManager.LOCAL_DIRECTORY_CACHE);
-        if (!appCacheDirectory.exists()) {
-            appCacheDirectory.mkdir();
+    private File GetExportsDirectory(Context context) {
+        File musicDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+        File exportDirectory = new File(musicDirectory, EXPORT_DIRECTORY_NAME);
+        if (!exportDirectory.exists()) {
+            exportDirectory.mkdir();
         }
-        return appCacheDirectory;
+        return exportDirectory;
     }
 
     /**
@@ -933,6 +1004,20 @@ public class DataManager {
         cursor.close();
         return returnString;
     }
+
+    /**
+     * Gets the mime type of the file.
+     * @param file File.
+     * @return Mime Type.
+     */
+    public String GetMimeType(File file, String defaultMime) {
+        String extension = file.getName().substring(file.getName().lastIndexOf('.'));
+        if(MimeTypeMap.getSingleton().hasExtension(extension)) {
+            return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        }
+        return defaultMime;
+    }
+
 
     /**
      * Converts the given string into a string that is valid for a file name in android's

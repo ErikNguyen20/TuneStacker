@@ -5,10 +5,6 @@
         android:title="@string/export_option_text"
         android:icon="@drawable/ic_baseline_drive_file_move_24"/>
     <item
-        android:id="@+id/backup_option"
-        android:title="@string/backup_option_text"
-        android:icon="@drawable/ic_baseline_cloud_upload_24"/>
-    <item
         android:id="@+id/delete_option"
         android:title="@string/remove_option_text"
         android:icon="@drawable/ic_baseline_delete_24"

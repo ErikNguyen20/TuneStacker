@@ -55,8 +55,6 @@ public class AllSongsFragment extends Fragment {
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
 
-                } else if(itemId == R.id.backup_option) {
-
                 } else if(itemId == R.id.delete_option) {
                     boolean remove = DataManager.getInstance().RemoveSongFromPlaylist(parentUuid, optional);
                     if(remove) {

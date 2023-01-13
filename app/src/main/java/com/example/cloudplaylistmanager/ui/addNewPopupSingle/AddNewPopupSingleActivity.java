@@ -14,6 +14,8 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -290,6 +292,15 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         else {
             SendToast("Please select a means of adding an Audio Source.");
         }
+    }
+
+    public int GetConnectivityStatus() {
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        if(networkInfo != null && networkInfo.isConnected()) {
+            return networkInfo.getType();
+        }
+        return -1;
     }
 
     private LiveData<Uri> getUriResult() {

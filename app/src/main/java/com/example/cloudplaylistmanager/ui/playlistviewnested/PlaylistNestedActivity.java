@@ -238,8 +238,6 @@ public class PlaylistNestedActivity extends AppCompatActivity {
                     }
                 });
             }
-        } else if(id == R.id.backup_option) {
-
         } else if(id == R.id.delete_option) {
             DataManager.getInstance().RemovePlaylist(this.uuidKey,null);
             this.finish();
