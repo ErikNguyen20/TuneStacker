@@ -13,7 +13,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +29,26 @@ public class YoutubeUtilities {
     private static final String PLAYLIST_EXTRACT_PATTERN = "list=([a-zA-Z0-9-_]+)&?";
     private static final String BASE_VIDEO_URL = "https://www.youtube.com/watch?v=";
 
+
+    public static ArrayList<PlaybackAudioInfo> Sync(PlaylistInfo fetchedPlaylist, PlaylistInfo localPlaylist) {
+        if(!fetchedPlaylist.getLinkSource().equals(localPlaylist.getLinkSource())) {
+            return null;
+        }
+
+        ArrayList<PlaybackAudioInfo> newSongs = new ArrayList<>();
+        HashSet<String> origin = new HashSet<>();
+
+        for(PlaybackAudioInfo audio : localPlaylist.getInsertedVideos()) {
+            origin.add(audio.getOrigin());
+        }
+        for(PlaybackAudioInfo audio : fetchedPlaylist.getAllVideos()) {
+            if(!origin.contains(audio.getOrigin())) {
+                newSongs.add(audio);
+            }
+        }
+
+        return newSongs;
+    }
 
     /**
      * Fetches all videos in a youtube playlist with a given playlist url.
@@ -132,42 +154,6 @@ public class YoutubeUtilities {
     }
 
     /**
-     * Extracts the Video ID from the Youtube URL.
-     * @param url Youtube Video URL.
-     */
-    public static String ExtractVideoIdFromUrl(String url) {
-        Matcher match = Pattern.compile(VID_EXTRACT_PATTERN).matcher(url);
-        if(match.find() && match.group(7) != null && match.group(7).length() == 11) {
-            return match.group(7);
-        }
-        else {
-            return null;
-        }
-    }
-
-    /**
-     * Extracts the Playlist ID from the Youtube Playlist URL.
-     * @param url Youtube Playlist URL.
-     */
-    public static String ExtractPlaylistIdFromUrl(String url) {
-        Matcher match = Pattern.compile(PLAYLIST_EXTRACT_PATTERN).matcher(url);
-        if(match.find()) {
-            return match.group(1);
-        }
-        else {
-            return null;
-        }
-    }
-
-    /**
-     * Simply concatenates the base Youtube URL with the id.
-     * @param id Youtube video ID.
-     */
-    public static String GetVideoWithYoutubeID(String id) {
-        return BASE_VIDEO_URL + id;
-    }
-
-    /**
      * Parses the JSON result of the get request from Youtube's playlist list API.
      * @param result JSON Result of the fetch api that will be parsed.
      * @return YtPlaylistInfo object
@@ -217,6 +203,41 @@ public class YoutubeUtilities {
         }
     }
 
+    /**
+     * Extracts the Video ID from the Youtube URL.
+     * @param url Youtube Video URL.
+     */
+    public static String ExtractVideoIdFromUrl(String url) {
+        Matcher match = Pattern.compile(VID_EXTRACT_PATTERN).matcher(url);
+        if(match.find() && match.group(7) != null && match.group(7).length() == 11) {
+            return match.group(7);
+        }
+        else {
+            return null;
+        }
+    }
+
+    /**
+     * Extracts the Playlist ID from the Youtube Playlist URL.
+     * @param url Youtube Playlist URL.
+     */
+    public static String ExtractPlaylistIdFromUrl(String url) {
+        Matcher match = Pattern.compile(PLAYLIST_EXTRACT_PATTERN).matcher(url);
+        if(match.find()) {
+            return match.group(1);
+        }
+        else {
+            return null;
+        }
+    }
+
+    /**
+     * Simply concatenates the base Youtube URL with the id.
+     * @param id Youtube video ID.
+     */
+    public static String GetVideoWithYoutubeID(String id) {
+        return BASE_VIDEO_URL + id;
+    }
 
 
     public static class YoutubePlaylistInfo extends PlaylistInfo {

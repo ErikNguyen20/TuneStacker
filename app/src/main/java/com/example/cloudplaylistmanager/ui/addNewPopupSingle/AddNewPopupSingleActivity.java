@@ -74,7 +74,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                 progressDialog.show();
             }
             if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
-                progressDialog.dismiss();
+                progressDialog.hide();
             }
         }
     };
@@ -258,7 +258,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             if(this.wifiLock != null && !this.wifiLock.isHeld()) {
                 this.wifiLock.acquire();
             }
-            DataManager.getInstance().DownloadSongToDirectoryFromUrl(urlInput, new DownloadListener() {
+            PlatformCompatUtility.DownloadSong(urlInput, new DownloadListener() {
                 @Override
                 public void onComplete(PlaybackAudioInfo audio) {
                     if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
@@ -341,7 +341,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         ReleaseLocks();
-        if(this.progressDialog.isShowing()) {
+        if(this.progressDialog != null) {
             this.progressDialog.dismiss();
         }
         super.onDestroy();

@@ -99,8 +99,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
             return;
         }
         if(this.shuffled) {
-            Random ran = new Random();
-            this.startingPosition = ran.nextInt(this.playlistInfo.getAllVideos().size());
+            this.startingPosition = MusicService.NEXT_SONG_IGNORED;
         }
         else {
             this.startingPosition = getIntent().getIntExtra(POSITION_TAG,-1);

@@ -18,6 +18,7 @@ import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Random;
 
 
@@ -36,12 +37,11 @@ public class MusicService extends Service implements
 
     private MusicServiceBinder musicBinder = new MusicServiceBinder();
     private OnUpdatePlayerListener onUpdatePlayerListener = null;
-    private WifiManager.WifiLock wifiLock = null;
     private MediaPlayer mediaPlayer = null;
 
     private ArrayList<PlaybackAudioInfo> playlist = null;
     private ArrayList<Integer> shuffledPositions;
-    private boolean[] errorPreparingPositions;
+    private HashSet<Integer> errorPreparingPositions;
     private int currentPlayPosition, songCounter;
     private boolean isShuffle, isRepeat = false;
     private boolean isPaused, isReduced = false; //Reduced when AudioManager invokes audio focus loss transient can duck
@@ -62,7 +62,7 @@ public class MusicService extends Service implements
         this.songCounter = 0;
         this.playlist = playlist;
         this.onUpdatePlayerListener = onUpdatePlayerListener;
-        this.errorPreparingPositions = new boolean[playlist.size()];
+        this.errorPreparingPositions = new HashSet<>();
         GenerateShuffledList();
     }
 
@@ -73,13 +73,13 @@ public class MusicService extends Service implements
      * @param repeat True = Music Player will repeat the playlist after it is finished.
      */
     public void BeginPlaying(int startPos, boolean shuffle, boolean repeat) {
-        this.songCounter = startPos;
         this.isShuffle = shuffle;
         this.isRepeat = repeat;
 
-        if(!this.wifiLock.isHeld()) {
-            this.wifiLock.acquire();
+        if(startPos == NEXT_SONG_IGNORED) {
+            this.songCounter = -1;
         }
+
         NextSong(startPos);
     }
 
@@ -89,11 +89,8 @@ public class MusicService extends Service implements
      * Resumes the Music Player.
      */
     public void Resume() {
-        if(!this.isInitialized) {
+        if(!this.isInitialized || !this.isPaused) {
             return;
-        }
-        if(!this.wifiLock.isHeld()) {
-            this.wifiLock.acquire();
         }
         this.mediaPlayer.start();
         this.isPaused = false;
@@ -110,9 +107,6 @@ public class MusicService extends Service implements
         if(!this.isInitialized) {
             return;
         }
-        if(this.wifiLock.isHeld()) {
-            this.wifiLock.release();
-        }
         this.mediaPlayer.stop();
         this.isPaused = false;
     }
@@ -121,11 +115,8 @@ public class MusicService extends Service implements
      * Pauses the Music Player.
      */
     public void Pause() {
-        if(!this.isInitialized) {
+        if(!this.isInitialized || this.isPaused) {
             return;
-        }
-        if(this.wifiLock.isHeld()) {
-            this.wifiLock.release();
         }
         this.mediaPlayer.pause();
         this.isPaused = true;
@@ -311,11 +302,8 @@ public class MusicService extends Service implements
         this.isInitialized = false;
         this.mediaPlayer.reset();
         this.bufferingProgressPercent = 0;
-        if(!this.wifiLock.isHeld()) {
-            this.wifiLock.acquire();
-        }
 
-        Log.d("MusicPlayer","Selected Song - " + audio.getTitle());
+        Log.d("MusicPlayer","Selected Song - \"" + audio.getAudioSource() + "\"");
         //Sets the datasource and prepares the audio based on the type.
         try{
             switch(audio.getAudioType()) {
@@ -332,14 +320,14 @@ public class MusicService extends Service implements
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
             //If there is an error preparing this media, skip it to the next one.
-            if(this.errorPreparingPositions[this.currentPlayPosition]) {
+            this.errorPreparingPositions.add(this.currentPlayPosition);
+            if(this.errorPreparingPositions.size() >= this.playlist.size()) {
                 if(this.onUpdatePlayerListener != null) {
                     this.onUpdatePlayerListener.onEnd();
                 }
                 stopSelf();
             }
             else {
-                this.errorPreparingPositions[this.currentPlayPosition] = true;
                 NextSong(NEXT_SONG_IGNORED);
             }
         }
@@ -349,7 +337,7 @@ public class MusicService extends Service implements
     public void onCreate() {
         super.onCreate();
 
-        this.wifiLock = ((WifiManager)getApplicationContext().getSystemService(Context.WIFI_SERVICE)).createWifiLock(WifiManager.WIFI_MODE_FULL,"music_service_lock");
+        this.errorPreparingPositions = new HashSet<>();
     }
 
     @Override
@@ -361,9 +349,6 @@ public class MusicService extends Service implements
             }
             this.mediaPlayer.reset();
             this.mediaPlayer.release();
-        }
-        if(this.wifiLock.isHeld()) {
-            this.wifiLock.release();
         }
         Log.d("MusicPlayer","Destructor called.");
     }
@@ -391,6 +376,7 @@ public class MusicService extends Service implements
             Log.d("MusicPlayer","Playing.");
             mP.start();
         }
+        this.errorPreparingPositions.remove(this.currentPlayPosition);
     }
 
     @Override
@@ -426,8 +412,10 @@ public class MusicService extends Service implements
                 Pause();
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                mediaPlayer.setVolume(0.5f,0.5f);
-                this.isReduced = true;
+                if(!this.isReduced) {
+                    mediaPlayer.setVolume(0.5f,0.5f);
+                    this.isReduced = true;
+                }
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
                 Resume();

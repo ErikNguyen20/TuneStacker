@@ -57,7 +57,7 @@ public class DataManager {
     public static final String DEFAULT_THUMBNAIL = DEFAULT_THUMBNAIL_MED;
 
     private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 8;
-    private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 5;
+    private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 6;
 
 
     private static DataManager instance = null;
@@ -382,6 +382,7 @@ public class DataManager {
             boolean success = playlist.RemoveVideo(audioName);
             if(success) {
                 this.importedPlaylistData.put(key, playlist);
+                RefreshNestedPlaylist(null);
                 this.dataLastUpdated = UUID.randomUUID().toString();
                 SaveImportedData();
             }
@@ -507,28 +508,25 @@ public class DataManager {
             return;
         }
         Thread thread = new Thread(() -> {
-            //Preforms a download operation.
-            YoutubeDLRequest request = null;
-            String responseString = null;
+            //Fetches audio information from the source.
+            YoutubeDLRequest request = new YoutubeDLRequest(url);
+            request.addOption("--no-playlist");
+            request.addOption("--retries",10);
+            request.addOption("--no-check-certificate");
 
-            int downloadAttemptNumber = 1;
-            boolean success = false;
-            while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !success) {
-                request = new YoutubeDLRequest(url);
-                request.addOption("-x");
-                request.addOption("--no-playlist");
-                request.addOption("--retries",10);
-                request.addOption("--no-check-certificate");
-                request.addOption("--no-mtime");
-                request.addOption("--audio-format", "opus");
-                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + "/%(title)s.%(ext)s");
+            PlaybackAudioInfo audio = new PlaybackAudioInfo();
+            int videoInfoFetchAttemptNumber = 1;
+            boolean successInfo = false;
+            boolean successDownload = false;
+            while(videoInfoFetchAttemptNumber <= MAX_FETCH_AUDIO_INFO_RETRIES && !successInfo) {
                 try {
-                    YoutubeDLResponse response = YoutubeDL.getInstance().execute(request, (float progress, long etaSeconds, String line) -> {
-                        downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
-                    });
-                    responseString = response.getOut();
+                    VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
+                    audio.setTitle(ValidateFileName(streamInfo.getTitle()));
+                    audio.setAuthor(streamInfo.getUploader());
+                    audio.setThumbnailSource(streamInfo.getThumbnail());
+                    audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
 
-                    success = true;
+                    successInfo = true;
                 } catch (YoutubeDLException | InterruptedException e) {
                     Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
                     e.printStackTrace();
@@ -541,47 +539,68 @@ public class DataManager {
                             return;
                         }
                     }
-                    downloadFromUrlListener.onError(downloadAttemptNumber,"Failed to Download from the given URL.");
-
-                    //We will retry download
-                    downloadAttemptNumber++;
-                }
-            }
-            if(!success) {
-                downloadFromUrlListener.onError(-1,"Download Attempts exceeded threshold.");
-                return;
-            }
-
-            //Fetches audio information from the source.
-            PlaybackAudioInfo audio = new PlaybackAudioInfo();
-            int videoInfoFetchAttemptNumber = 1;
-            success = false;
-            while(videoInfoFetchAttemptNumber <= MAX_FETCH_AUDIO_INFO_RETRIES && !success) {
-                try {
-                    VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
-                    audio.setTitle(streamInfo.getTitle());
-                    audio.setAuthor(streamInfo.getUploader());
-                    audio.setThumbnailSource(streamInfo.getThumbnail());
-                    audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
-
-                    success = true;
-                } catch (YoutubeDLException | InterruptedException e) {
-                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
-                    e.printStackTrace();
                     downloadFromUrlListener.onError(videoInfoFetchAttemptNumber,"Failed to Fetch Video Information.");
 
                     //We will retry Fetch
                     videoInfoFetchAttemptNumber++;
                 }
             }
+
+
+            //Preforms a download operation.
+            request = new YoutubeDLRequest(url);
+            request.addOption("-x");
+            request.addOption("--no-playlist");
+            request.addOption("--retries",10);
+            request.addOption("--no-check-certificate");
+            request.addOption("--no-mtime");
+            request.addOption("--audio-format", "opus");
+
+            if(successInfo) {
+                File searchFile = DoesFileExistWithName(this.appMusicDirectory,audio.getTitle());
+                if(searchFile != null) {
+                    //If the file already exists, then don't re-download it.
+                    successDownload = true;
+                }
+                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".%(ext)s");
+            }
+            else {
+                request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + "%(title)s.%(ext)s");
+            }
+
+            String responseString = null;
+            int downloadAttemptNumber = 1;
+            while(downloadAttemptNumber <= MAX_AUDIO_DOWNLOAD_RETRIES && !successDownload) {
+                try {
+                    YoutubeDLResponse response = YoutubeDL.getInstance().execute(request, (float progress, long etaSeconds, String line) -> {
+                        downloadFromUrlListener.onProgressUpdate(progress,etaSeconds);
+                    });
+                    responseString = response.getOut();
+
+                    successDownload = true;
+                } catch (YoutubeDLException | InterruptedException e) {
+                    Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
+                    e.printStackTrace();
+                    downloadFromUrlListener.onError(downloadAttemptNumber,"Failed to Download from the given URL. Retrying...");
+
+                    //We will retry download
+                    downloadAttemptNumber++;
+                }
+            }
+            if(!successDownload) {
+                downloadFromUrlListener.onError(-1,"Download Attempts exceeded threshold.");
+                return;
+            }
+
+
             //Sets fallback audio parameters.
-            if(!success) {
+            if(!successInfo) {
                 audio = new PlaybackAudioInfo();
                 int startIndex = responseString.indexOf("[ExtractAudio]");
                 int endIndex = responseString.indexOf(".opus");
                 if(startIndex != -1 && endIndex != -1) {
                     String sourcePath = responseString.substring(startIndex + 28, endIndex + 5);
-                    audio.setTitle(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5));
+                    audio.setTitle(ValidateFileName(sourcePath.substring(this.appMusicDirectory.getAbsolutePath().length()+1,sourcePath.length()-5)));
                 }
                 else {
                     downloadFromUrlListener.onError(-1,"Could not find reference to Downloaded File.");
@@ -591,6 +610,7 @@ public class DataManager {
             audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             audio.setOrigin(url);
+
 
             //Updates the thumbnail source and type.
             if(audio.getThumbnailSource() != null) {
@@ -912,5 +932,39 @@ public class DataManager {
         String returnString = cursor.getString(nameIndex);
         cursor.close();
         return returnString;
+    }
+
+    /**
+     * Converts the given string into a string that is valid for a file name in android's
+     * file system. Invalid Characters are listed here:
+     * https://stackoverflow.com/a/35352640
+     * @param fileName File name that will be converted.
+     * @return Name of the file.
+     */
+    public static String ValidateFileName(String fileName) {
+        String valid = fileName.trim(); //Remotes leading and ending spaces.
+        if(valid.isEmpty()) {
+            return "Unnamed";
+        }
+
+        //Remove all control characters + DELETE(U+007F)
+        valid = valid.replaceAll("[\\x{0000}-\\x{001F}\\x{007F}]","");
+
+        //Replaces invalid characters with similar-looking Unicode characters.
+        valid = valid.replace('"','\uFF02');
+        valid = valid.replace('*','\uFF0A');
+        valid = valid.replace('/','\uFF0F');
+        valid = valid.replace(':','\uFF1A');
+        valid = valid.replace('<','\uFF1C');
+        valid = valid.replace('>','\uFF1E');
+        valid = valid.replace('?','\uFF1F');
+        valid = valid.replace('\\','\uFF3C');
+        valid = valid.replace('|','\uFF5C');
+
+        if(valid.charAt(valid.length()-1) == '.') { //Replaces period at the end of the file name.
+            valid = valid.substring(0,valid.length()-1) + '\uFF0E';
+        }
+
+        return valid;
     }
 }

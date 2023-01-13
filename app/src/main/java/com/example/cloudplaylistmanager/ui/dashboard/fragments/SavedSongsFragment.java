@@ -81,7 +81,6 @@ public class SavedSongsFragment extends Fragment {
                     Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,savedSongs);
                     intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
-                    Log.e("ClickedPosition",String.valueOf(position));
                     startActivity(intent);
                 }
                 else {

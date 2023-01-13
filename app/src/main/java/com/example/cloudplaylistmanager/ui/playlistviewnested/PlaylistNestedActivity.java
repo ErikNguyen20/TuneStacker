@@ -8,10 +8,14 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.viewpager2.widget.ViewPager2;
 
 import android.app.Dialog;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.Pair;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,13 +29,39 @@ import android.widget.Toast;
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+import com.example.cloudplaylistmanager.Utils.SyncPlaylistListener;
 import com.google.android.material.tabs.TabLayout;
 
 public class PlaylistNestedActivity extends AppCompatActivity {
     public static final String SERIALIZE_TAG = "playlist_data";
     public static final String UUID_KEY_TAG = "playlist_uuid";
+    private static final String TOAST_KEY = "toast_key";
+    private static final String PROGRESS_DIALOG_SHOW_KEY = "show_dialog_key";
+    private static final String PROGRESS_DIALOG_HIDE_KEY = "hide_dialog_key";
+    private static final String PROGRESS_DIALOG_UPDATE_KEY = "update_dialog_key";
+
+    //Handler that handles toast and progress dialog messages.
+    private ProgressDialog progressDialog;
+    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
+                Toast.makeText(getApplicationContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
+            }
+            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
+                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
+                progressDialog.show();
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
+                progressDialog.hide();
+            }
+        }
+    };
 
     private ImageView icon;
     private TextView title;
@@ -141,6 +171,10 @@ public class PlaylistNestedActivity extends AppCompatActivity {
                 UpdateUI();
             }
         });
+
+        this.progressDialog = new ProgressDialog(this);
+        this.progressDialog.setTitle("Syncing");
+        this.progressDialog.setCanceledOnTouchOutside(false);
     }
 
     public void UpdateUI() {
@@ -175,7 +209,35 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         } else if(id == R.id.export_option) {
 
         } else if(id == R.id.sync_option) {
+            PlaylistInfo currentNestedPlaylist = DataManager.getInstance().GetPlaylistFromKey(this.uuidKey);
+            if(currentNestedPlaylist != null) {
 
+                StartProgressDialog("Syncing Playlists...");
+                PlatformCompatUtility.SyncPlaylistsMultiple(currentNestedPlaylist.GetImportedPlaylistKeys(), new SyncPlaylistListener() {
+                    @Override
+                    public void onComplete() {
+                        playlistNestedViewModel.updateData(uuidKey);
+                        SendToast("Successfully Synced Playlist.");
+                        HideProgressDialog();
+                    }
+
+                    @Override
+                    public void onProgress(String message) {
+                        UpdateProgressDialog(message);
+                    }
+
+                    @Override
+                    public void onError(int code, String message) {
+                        if(code == -1) {
+                            SendToast(message);
+                            HideProgressDialog();
+                        }
+                        else {
+                            UpdateProgressDialog(message);
+                        }
+                    }
+                });
+            }
         } else if(id == R.id.backup_option) {
 
         } else if(id == R.id.delete_option) {
@@ -219,5 +281,46 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         });
 
         dialog.show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if(this.progressDialog != null) {
+            this.progressDialog.dismiss();
+        }
+        super.onDestroy();
+    }
+
+    public void SendToast(String message) {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putString(TOAST_KEY,message);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void StartProgressDialog(String message) {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(PROGRESS_DIALOG_SHOW_KEY,true);
+        bundle.putString(PROGRESS_DIALOG_UPDATE_KEY,message);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void UpdateProgressDialog(String message) {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putString(PROGRESS_DIALOG_UPDATE_KEY,message);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
+    }
+
+    public void HideProgressDialog() {
+        Message msg = this.toastHandler.obtainMessage();
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(PROGRESS_DIALOG_HIDE_KEY,true);
+        msg.setData(bundle);
+        this.toastHandler.sendMessage(msg);
     }
 }
