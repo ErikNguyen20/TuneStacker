@@ -9,13 +9,11 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Message;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -29,6 +27,7 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.ExportListener;
 import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
@@ -156,7 +155,13 @@ public class PlaylistImportActivity extends AppCompatActivity {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
-
+                    boolean success = DataManager.getInstance().ExportSong(optional,null);
+                    if(success) {
+                        Toast.makeText(PlaylistImportActivity.this,"Song Successfully Exported.",Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        Toast.makeText(PlaylistImportActivity.this,"Song Failed to Export.",Toast.LENGTH_SHORT).show();
+                    }
                 } else if(itemId == R.id.delete_option) {
                     boolean success = DataManager.getInstance().RemoveSongFromPlaylist(uuidKey,optional);
                     if(success) {
@@ -207,11 +212,12 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.source.setSelected(true);
         if(!this.playlistInfo.getAllVideos().isEmpty()) {
             PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
-            if(sourceAudio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-                Bitmap bitmap = BitmapFactory.decodeFile(sourceAudio.getThumbnailSource());
-                if (bitmap != null) {
-                    this.icon.setImageBitmap(bitmap);
-                }
+            Bitmap bitmap = DataManager.GetThumbnailImage(sourceAudio);
+            if(bitmap != null) {
+                this.icon.setImageBitmap(bitmap);
+            }
+            else {
+                this.icon.setImageResource(R.drawable.med_res);
             }
         }
     }
@@ -227,7 +233,19 @@ public class PlaylistImportActivity extends AppCompatActivity {
         if (id == android.R.id.home) {
             this.finish();
         } else if(id == R.id.export_option) {
+            StartProgressDialog("Exporting Playlist...");
+            DataManager.getInstance().ExportPlaylist(uuidKey, new ExportListener() {
+                @Override
+                public void onComplete(String message) {
+                    SendToast(message);
+                    HideProgressDialog();
+                }
 
+                @Override
+                public void onProgress(String message) {
+                    UpdateProgressDialog(message);
+                }
+            });
         } else if(id == R.id.sync_option) {
             PlaylistInfo currentPlaylist = DataManager.getInstance().GetPlaylistFromKey(this.uuidKey);
             if(currentPlaylist != null) {

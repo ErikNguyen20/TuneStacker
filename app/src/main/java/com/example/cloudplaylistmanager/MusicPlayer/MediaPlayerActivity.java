@@ -39,6 +39,7 @@ import android.widget.TextView;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsRecyclerAdapter;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
@@ -353,14 +354,9 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
 
     public Bitmap GetMediaPlayerIcon(PlaybackAudioInfo audio) {
-        if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-            Bitmap bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
-            if (bitmap != null) {
-                return bitmap;
-            }
-            else {
-                return BitmapFactory.decodeResource(getApplicationContext().getResources(),R.drawable.med_res);
-            }
+        Bitmap bitmap = DataManager.GetThumbnailImage(audio);
+        if(bitmap != null) {
+            return bitmap;
         }
         else {
             return BitmapFactory.decodeResource(getApplicationContext().getResources(),R.drawable.med_res);

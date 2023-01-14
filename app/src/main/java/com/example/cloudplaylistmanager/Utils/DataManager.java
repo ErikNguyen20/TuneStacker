@@ -1,15 +1,15 @@
 package com.example.cloudplaylistmanager.Utils;
 
 import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.provider.OpenableColumns;
 import android.util.Log;
 import android.util.Pair;
@@ -22,7 +22,6 @@ import com.androidnetworking.common.ANRequest;
 import com.androidnetworking.common.ANResponse;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
-import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -38,7 +37,6 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -63,7 +61,7 @@ public class DataManager {
     private static final String DEFAULT_THUMBNAIL_HIGH = "default_thumbnail_high";
     public static final String DEFAULT_THUMBNAIL = DEFAULT_THUMBNAIL_MED;
 
-    private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 8;
+    private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 10;
     private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 6;
 
 
@@ -73,8 +71,6 @@ public class DataManager {
     private File appImageDirectory;
     private File exportDirectory;
     private SharedPreferences sharedPreferences;
-    private ContentResolver contentResolver;
-    //private MediaScannerConnection mediaScannerConnection;
 
     private String dataLastUpdated;
     private HashMap<String, PlaylistInfo> nestedPlaylistData;  //key is UUID
@@ -94,7 +90,6 @@ public class DataManager {
             this.exportDirectory = GetExportsDirectory(context);
             this.dataLastUpdated = UUID.randomUUID().toString();
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
-            this.contentResolver = context.getContentResolver();
 
 
             YoutubeDL.getInstance().init(context);
@@ -562,7 +557,7 @@ public class DataManager {
             }
 
             if(successInfo) {
-                File searchFile = DoesFileExistWithName(this.appMusicDirectory,audio.getTitle());
+                File searchFile = DoesFileExistWithName(this.appMusicDirectory,audio.getTitle(),"audio");
                 if(searchFile != null) {
                     //If the file already exists, then don't re-download it.
                     successDownload = true;
@@ -613,7 +608,7 @@ public class DataManager {
 
             //Updates the thumbnail source and type.
             if(audio.getThumbnailSource() != null) {
-                File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle());
+                File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle(),null);
                 if(searchFile == null) {
                     File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle() + ".bin");
                     if (newThumbnail != null) {
@@ -655,7 +650,7 @@ public class DataManager {
         }
 
         try{
-            inputStream = this.contentResolver.openInputStream(from);
+            inputStream = this.context.getContentResolver().openInputStream(from);
             outputStream = new FileOutputStream(fileDestination);
 
             byte[] byteArrayBuffer = new byte[1024];
@@ -685,69 +680,73 @@ public class DataManager {
     }
 
     /**
-     *
+     * Exports the specified playlist into the musics directory.
+     * @param playlistKey Key of the playlist.
      */
-    public void ExportSong(PlaybackAudioInfo audio) {
-        File audioFile = GetFileFromDirectory(this.appMusicDirectory,audio.getTitle());
+    public void ExportPlaylist(String playlistKey, ExportListener exportListener) {
+        Thread thread = new Thread(() -> {
+            PlaylistInfo playlist = GetPlaylistFromKey(playlistKey);
+            if(playlist != null) {
+                for(PlaybackAudioInfo audio : playlist.getAllVideos()) {
+                    ExportSong(audio.getTitle(), playlist.getTitle());
+                    exportListener.onProgress("Exporting: " + audio.getTitle());
+                }
+                exportListener.onComplete("Successfully Exported Playlist.");
+                return;
+            }
+            exportListener.onComplete("Failed to export playlist.");
+        });
+        thread.start();
+    }
+
+    /**
+     * Exports the specified song into the musics directory.
+     * @param audioTitle Title of the audio.
+     */
+    public boolean ExportSong(String audioTitle, String optionalDirectory) {
+        File audioFile = DoesFileExistWithName(this.appMusicDirectory,audioTitle,"audio");
         if(audioFile == null) {
-            return;
+            return false;
         }
         try {
-            if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                ContentValues contentValues = new ContentValues();
-                contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, audio.getTitle());
-                contentValues.put(MediaStore.MediaColumns.MIME_TYPE, GetMimeType(audioFile,"audio/*"));
-                contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + File.separator + EXPORT_DIRECTORY_NAME);
-
-                Uri audioUri = this.contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, contentValues);
-                OutputStream audioOutputStream = this.contentResolver.openOutputStream(audioUri);
-                FileInputStream audioInputStream = new FileInputStream(audioFile);
-
-                byte[] byteArrayBuffer = new byte[1024];
-                int length;
-                while ((length = audioInputStream.read(byteArrayBuffer)) > 0) {
-                    audioOutputStream.write(byteArrayBuffer, 0, length);
+            File fileDestination;
+            if(optionalDirectory != null) {
+                File nextDirectory = new File(this.exportDirectory, optionalDirectory);
+                if(!nextDirectory.exists()) {
+                    nextDirectory.mkdir();
                 }
-
-                audioInputStream.close();
-                audioOutputStream.flush();
-                audioOutputStream.close();
-
-                MediaScannerConnection.scanFile(this.context, new String[]{audioUri.getPath()}, null,
-                        new MediaScannerConnection.OnScanCompletedListener() {
-                    @Override
-                    public void onScanCompleted(String s, Uri uri) {
-                        Log.e(LOG_TAG, "Media Scan Complete.");
-                    }
-                });
+                fileDestination = new File(nextDirectory, audioFile.getName());
             }
             else {
-                File fileDestination = new File(this.exportDirectory, audio.getTitle());
-
-                FileInputStream audioInputStream = new FileInputStream(audioFile);
-                OutputStream audioOutputStream = new FileOutputStream(fileDestination);
-
-                byte[] byteArrayBuffer = new byte[1024];
-                int length;
-                while((length = audioInputStream.read(byteArrayBuffer)) > 0) {
-                    audioOutputStream.write(byteArrayBuffer,0,length);
-                }
-
-                audioInputStream.close();
-                audioOutputStream.flush();
-                audioOutputStream.close();
-
-                MediaScannerConnection.scanFile(this.context, new String[]{fileDestination.getPath()}, null,
-                        new MediaScannerConnection.OnScanCompletedListener() {
-                    @Override
-                    public void onScanCompleted(String s, Uri uri) {
-                        Log.e(LOG_TAG, "Media Scan Complete.");
-                    }
-                });
+                fileDestination = new File(this.exportDirectory, audioFile.getName());
             }
+
+            InputStream audioInputStream = new FileInputStream(audioFile);
+            OutputStream audioOutputStream = new FileOutputStream(fileDestination);
+
+            byte[] byteArrayBuffer = new byte[1024];
+            int length;
+            while((length = audioInputStream.read(byteArrayBuffer)) > 0) {
+                audioOutputStream.write(byteArrayBuffer,0,length);
+            }
+
+            audioInputStream.close();
+            audioOutputStream.flush();
+            audioOutputStream.close();
+
+            MediaScannerConnection.scanFile(this.context, new String[]{fileDestination.toString()}, null,
+                    new MediaScannerConnection.OnScanCompletedListener() {
+                @Override
+                public void onScanCompleted(String s, Uri uri) {
+                    Log.d(LOG_TAG, "Scanned: " + s);
+                    Log.d(LOG_TAG, "Uri: " + uri);
+                }
+            });
+            return true;
         } catch (Exception e) {
             Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
+            return false;
         }
     }
 
@@ -844,7 +843,7 @@ public class DataManager {
         }
         PlaylistInfo playlistInfo = new PlaylistInfo();
 
-        HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory);
+        HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory,null);
         for(File file : files) {
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
             String title = file.getName().split("\\.(?=[^\\.]+$)")[0];
@@ -871,14 +870,14 @@ public class DataManager {
      * @param directory Source directory
      * @return Map(String, File)
      */
-    public HashMap<String,File> GetMapOfFileDirectory(File directory) {
+    public HashMap<String,File> GetMapOfFileDirectory(File directory, String defaultmime) {
         File[] files = directory.listFiles();
         if(files == null) {
             return null;
         }
         HashMap<String,File> directoryMap = new HashMap<>();
         for(File file : files) {
-            if(GetMimeType(file,"").contains("audio")) {
+            if(defaultmime == null || GetMimeType(file,"").contains(defaultmime)) {
                 directoryMap.put(file.getName().split("\\.(?=[^\\.]+$)")[0],file);
             }
         }
@@ -891,13 +890,16 @@ public class DataManager {
      * @param fileName Name of the file.
      * @return File by that name.
      */
-    public File DoesFileExistWithName(File directory, String fileName) {
+    public File DoesFileExistWithName(File directory, String fileName, String optionalMime) {
         File[] files = directory.listFiles();
         if(files == null) {
             return null;
         }
         for(File file : files) {
             if(fileName.equals(file.getName().split("\\.(?=[^\\.]+$)")[0])) {
+                if(optionalMime == null || !GetMimeType(file,"").contains(optionalMime)) {
+                    continue;
+                }
                 return file;
             }
         }
@@ -940,6 +942,9 @@ public class DataManager {
      */
     private File GetExportsDirectory(Context context) {
         File musicDirectory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC);
+        if(!musicDirectory.exists()) {
+            musicDirectory.mkdir();
+        }
         File exportDirectory = new File(musicDirectory, EXPORT_DIRECTORY_NAME);
         if (!exportDirectory.exists()) {
             exportDirectory.mkdir();
@@ -997,7 +1002,7 @@ public class DataManager {
         if(uri == null) {
             return null;
         }
-        Cursor cursor = this.contentResolver.query(uri,null,null,null,null);
+        Cursor cursor = this.context.getContentResolver().query(uri,null,null,null,null);
         int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
         cursor.moveToFirst();
         String returnString = cursor.getString(nameIndex);
@@ -1011,13 +1016,41 @@ public class DataManager {
      * @return Mime Type.
      */
     public String GetMimeType(File file, String defaultMime) {
-        String extension = file.getName().substring(file.getName().lastIndexOf('.'));
+        String extension = file.getName().substring(file.getName().lastIndexOf('.') + 1);
+
         if(MimeTypeMap.getSingleton().hasExtension(extension)) {
             return MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
         }
         return defaultMime;
     }
 
+    /**
+     * Gets the Bitmap of the thumbnail of the audio.
+     * @param audio Audio source.
+     * @return Mime Type, returns null if it doesn't exist.
+     */
+    public static Bitmap GetThumbnailImage(PlaybackAudioInfo audio) {
+        if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
+            Bitmap bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
+            if (bitmap != null) {
+                return bitmap;
+            }
+            else {
+                try {
+                    MediaMetadataRetriever mmr = new MediaMetadataRetriever();
+                    mmr.setDataSource(audio.getAudioSource());
+                    byte[] data = mmr.getEmbeddedPicture();
+                    if (data != null) {
+                        bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                        return bitmap;
+                    }
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Converts the given string into a string that is valid for a file name in android's

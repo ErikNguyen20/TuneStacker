@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.cloudplaylistmanager.R;
+import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
@@ -68,14 +69,13 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
             PlaybackAudioInfo audio = this.audios.get(this.addButtonIncluded ? position - 1 : position);
 
             viewHolder.title.setText(audio.getTitle());
-            if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-                Bitmap bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
-                if (bitmap != null) {
-                    viewHolder.icon.setImageBitmap(bitmap);
-                    return;
-                }
+            Bitmap bitmap = DataManager.GetThumbnailImage(audio);
+            if(bitmap != null) {
+                viewHolder.icon.setImageBitmap(bitmap);
             }
-            viewHolder.icon.setImageResource(R.drawable.med_res);
+            else {
+                viewHolder.icon.setImageResource(R.drawable.med_res);
+            }
         }
     }
 

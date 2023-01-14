@@ -98,7 +98,8 @@ public class PlatformCompatUtility {
 
                     if(fetchedAudioModified[0]) {
                         updatedPlaylist.AddVideoToPlaylist(fetchedAudio[0]);
-                        downloadListener.onProgressUpdate(index + 1,audios.size());
+                        downloadListener.onProgressUpdate("[" + (index + 1) + "/" + audios.size() +
+                                "] Downloaded: " + fetchedAudio[0].getTitle());
                     }
                     else {
                         downloadListener.onError(0,songOrigin + " download failed.");

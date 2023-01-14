@@ -24,6 +24,7 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.addExistingPopupSingle.AddExistingPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.addNewPopupSingle.AddNewPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedViewModel;
+import com.example.cloudplaylistmanager.ui.playlistviewnormal.PlaylistImportActivity;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -54,7 +55,13 @@ public class AllSongsFragment extends Fragment {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
-
+                    boolean success = DataManager.getInstance().ExportSong(optional,null);
+                    if(success) {
+                        Toast.makeText(getActivity(),"Song Successfully Exported.",Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        Toast.makeText(getActivity(),"Song Failed to Export.",Toast.LENGTH_SHORT).show();
+                    }
                 } else if(itemId == R.id.delete_option) {
                     boolean remove = DataManager.getInstance().RemoveSongFromPlaylist(parentUuid, optional);
                     if(remove) {

@@ -100,7 +100,7 @@ public class PlaylistInfo implements Serializable {
 
     public void AddVideoToPlaylist(PlaybackAudioInfo video) {
         this.insertedVideos.add(video);
-        this.allVideos.add(video);
+        UpdateAllVideos();
     }
 
     public void ImportPlaylist(String key, PlaylistInfo other) {

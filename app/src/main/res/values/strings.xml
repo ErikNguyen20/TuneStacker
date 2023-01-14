@@ -37,6 +37,10 @@
     <string name="popup_download">&#032;Download</string>
     <string name="popup_confirm">Confirm</string>
     <string name="popup_search_hint">Search</string>
+    <string name="popup_continue">Continue</string>
+    <string name="popup_wifi_label">WIFI</string>
+    <string name="popup_warning_line_1">Warning: You are currently using mobile data.</string>
+    <string name="popup_warning_line_2">Would you like to continue?</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_nested_playlist">NestedPlaylistActivity</string>

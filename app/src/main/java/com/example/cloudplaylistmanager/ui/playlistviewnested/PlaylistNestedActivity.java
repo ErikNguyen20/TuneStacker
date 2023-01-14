@@ -29,6 +29,7 @@ import android.widget.Toast;
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.ExportListener;
 import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
@@ -185,11 +186,12 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         this.subtitle.setText(new String(" " + this.playlistInfo.getAllVideos().size() + " songs"));
         if(!this.playlistInfo.getAllVideos().isEmpty()) {
             PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
-            if(sourceAudio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-                Bitmap bitmap = BitmapFactory.decodeFile(sourceAudio.getThumbnailSource());
-                if (bitmap != null) {
-                    this.icon.setImageBitmap(bitmap);
-                }
+            Bitmap bitmap = DataManager.GetThumbnailImage(sourceAudio);
+            if(bitmap != null) {
+                this.icon.setImageBitmap(bitmap);
+            }
+            else {
+                this.icon.setImageResource(R.drawable.med_res);
             }
         }
     }
@@ -207,7 +209,19 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         } else if(id == R.id.rename_option) {
             ShowRenameDialog();
         } else if(id == R.id.export_option) {
+            StartProgressDialog("Exporting Playlist...");
+            DataManager.getInstance().ExportPlaylist(uuidKey, new ExportListener() {
+                @Override
+                public void onComplete(String message) {
+                    SendToast(message);
+                    HideProgressDialog();
+                }
 
+                @Override
+                public void onProgress(String message) {
+                    UpdateProgressDialog(message);
+                }
+            });
         } else if(id == R.id.sync_option) {
             PlaylistInfo currentNestedPlaylist = DataManager.getInstance().GetPlaylistFromKey(this.uuidKey);
             if(currentNestedPlaylist != null) {

@@ -11,6 +11,7 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Observer;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
@@ -124,7 +125,24 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             this.downloadButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    DownloadAudio();
+                    if(GetConnectivityStatus() == ConnectivityManager.TYPE_MOBILE) {
+                        Dialog dialog = new Dialog(getApplicationContext());
+                        dialog.setContentView(R.layout.popup_confirm_button);
+
+                        TextView continueButton = dialog.findViewById(R.id.textView_continue_button);
+                        continueButton.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                dialog.dismiss();
+                                DownloadAudio();
+                            }
+                        });
+
+                        dialog.show();
+                    }
+                    else {
+                        DownloadAudio();
+                    }
                 }
             });
 
@@ -150,7 +168,24 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             this.downloadButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    DownloadPlaylist();
+                    if(GetConnectivityStatus() == ConnectivityManager.TYPE_MOBILE) {
+                        Dialog dialog = new Dialog(getApplicationContext());
+                        dialog.setContentView(R.layout.popup_confirm_button);
+
+                        TextView continueButton = dialog.findViewById(R.id.textView_continue_button);
+                        continueButton.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+                                dialog.dismiss();
+                                DownloadPlaylist();
+                            }
+                        });
+
+                        dialog.show();
+                    }
+                    else {
+                        DownloadPlaylist();
+                    }
                 }
             });
         }
@@ -201,8 +236,8 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onProgressUpdate(int progress, int outOf) {
-                UpdateProgressDialog("Download Progress: " + progress + "/" + outOf);
+            public void onProgressUpdate(String message) {
+                UpdateProgressDialog(message);
             }
 
             @Override

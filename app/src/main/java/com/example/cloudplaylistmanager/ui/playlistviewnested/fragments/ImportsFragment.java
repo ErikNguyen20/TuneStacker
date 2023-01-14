@@ -24,6 +24,7 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.PlaylistOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.ExportListener;
 import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.Utils.SerializablePair;
@@ -90,7 +91,19 @@ public class ImportsFragment extends Fragment {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
+                    StartProgressDialog("Exporting Playlist...");
+                    DataManager.getInstance().ExportPlaylist(playlists.get(position).first, new ExportListener() {
+                        @Override
+                        public void onComplete(String message) {
+                            SendToast(message);
+                            HideProgressDialog();
+                        }
 
+                        @Override
+                        public void onProgress(String message) {
+                            UpdateProgressDialog(message);
+                        }
+                    });
                 } else if(itemId == R.id.delete_option) {
                     boolean success = DataManager.getInstance().RemovePlaylist(playlists.get(position).first, parentUuidKey);
                     if(success) {
