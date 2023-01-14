@@ -18,6 +18,9 @@ public class ApplicationClass extends Application {
         CreateNotificationChannel();
     }
 
+    /**
+     * Creates two notification channels for the application.
+     */
     private void CreateNotificationChannel() {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel notificationChannel1 = new NotificationChannel(CHANNEL_ID_1, "Channel1", NotificationManager.IMPORTANCE_LOW);

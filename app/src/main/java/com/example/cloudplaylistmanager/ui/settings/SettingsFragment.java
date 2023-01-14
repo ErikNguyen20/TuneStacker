@@ -22,13 +22,12 @@ public class SettingsFragment extends Fragment {
 
     public View onCreateView(@NonNull LayoutInflater inflater,
                              ViewGroup container, Bundle savedInstanceState) {
-        settingsViewModel =
-                new ViewModelProvider(this).get(SettingsViewModel.class);
+        this.settingsViewModel = new ViewModelProvider(this).get(SettingsViewModel.class);
 
-        binding = FragmentSettingsBinding.inflate(inflater, container, false);
-        View root = binding.getRoot();
+        this.binding = FragmentSettingsBinding.inflate(inflater, container, false);
+        View root = this.binding.getRoot();
 
-        final TextView textView = binding.textNotifications;
+        final TextView textView = this.binding.textNotifications;
         settingsViewModel.getText().observe(getViewLifecycleOwner(), new Observer<String>() {
             @Override
             public void onChanged(@Nullable String s) {

@@ -21,13 +21,26 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
 
+/**
+ * A Recycler View Adapter that implements a filtered display feature and multi selection.
+ * It is important to implement the {@link RecyclerViewSelectItemsListener} properly as to
+ * fetch the information for each recycler view item.
+ * Extends {@link RecyclerView.Adapter}
+ */
 public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private ArrayList<String> listOfUUids;
+    private ArrayList<String> listOfUUids; //List of unique identifiers for each item.
     private Context context;
     private boolean isPlaylist;
     private RecyclerViewSelectItemsListener recyclerViewSelectItemsListener;
 
+    /**
+     * Instantiates a new SelectItemsRecyclerAdapter object.
+     * @param context Context of the application.
+     * @param isPlaylist If the recycler view is displaying playlist items or audio items.
+     * @param listOfUUids List of unique identifiers that will be used to retrieve the items' information
+     * @param recyclerViewSelectItemsListener Listener to fetch item data and handles button presses.
+     */
     public SelectItemsRecyclerAdapter(Context context, boolean isPlaylist, ArrayList<String> listOfUUids,
                                       RecyclerViewSelectItemsListener recyclerViewSelectItemsListener) {
         this.context = context;
@@ -39,28 +52,43 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
         this.recyclerViewSelectItemsListener = recyclerViewSelectItemsListener;
     }
 
+    /**
+     * Creates a new viewholder based on the viewType.
+     * @param parent Parent of the view.
+     * @param viewType Type of the view.
+     * @return {@link RecyclerView.ViewHolder}
+     */
     @NonNull
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(this.context);
         if(this.isPlaylist) {
+            //Creates a view with the layout of a playlist item.
             View view = inflater.inflate(R.layout.double_line_item_with_radio_button, parent, false);
             return new SelectItemsRecyclerAdapter.ViewHolderPlaylist(view);
         }
         else {
+            //Creates a view with the layout of an audio item.
             View view = inflater.inflate(R.layout.single_line_item_with_radio_button, parent, false);
             return new SelectItemsRecyclerAdapter.ViewHolderAudio(view);
         }
     }
 
+    /**
+     * Initializes the data displayed on the item's UI.
+     * @param holder Current viewholder.
+     * @param position Position of the item in the recycler view.
+     */
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if(this.isPlaylist) {
             SelectItemsRecyclerAdapter.ViewHolderPlaylist viewHolder = (SelectItemsRecyclerAdapter.ViewHolderPlaylist) holder;
 
+            //Gets the unique identifier for the current item.
             String uuidLink = this.listOfUUids.get(position);
             viewHolder.uuidLink = uuidLink;
 
+            //Fetches the information of the current playlist item using the unique identifier.
             Pair<PlaylistInfo, Boolean> playlistInfo = this.recyclerViewSelectItemsListener.FetchPlaylistInformation(uuidLink);
             if(playlistInfo == null) {
                 return;
@@ -75,7 +103,7 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
                 return;
             }
             PlaybackAudioInfo sourceAudio = playlistInfo.first.getAllVideos().iterator().next();
-            Bitmap bitmap = DataManager.GetThumbnailImage(sourceAudio);
+            Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(sourceAudio);
             if(bitmap != null) {
                 viewHolder.icon.setImageBitmap(bitmap);
             }
@@ -86,9 +114,11 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
         else {
             SelectItemsRecyclerAdapter.ViewHolderAudio viewHolder = (SelectItemsRecyclerAdapter.ViewHolderAudio) holder;
 
+            //Gets the unique identifier for the current item.
             String uuidLink = this.listOfUUids.get(position);
             viewHolder.uuidLink = uuidLink;
 
+            //Fetches the information of the current audio item using the unique identifier.
             Pair<PlaybackAudioInfo, Boolean> audioInfo = this.recyclerViewSelectItemsListener.FetchAudioInformation(uuidLink);
             if(audioInfo == null) {
                 return;
@@ -96,6 +126,7 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
             viewHolder.checkBox.setChecked(audioInfo.second);
             viewHolder.title.setText(audioInfo.first.getTitle());
 
+            //Sets the icon of the audio item.
             if(audioInfo.first.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
                 Bitmap bitmap = BitmapFactory.decodeFile(audioInfo.first.getThumbnailSource());
                 if (bitmap != null) {
@@ -107,21 +138,36 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
         }
     }
 
+    /**
+     * Sets a list of filtered identifier results that will be displayed on the recycler view.
+     * @param listOfUUidsNew Filtered results.
+     */
     public void FilterResults(ArrayList<String> listOfUUidsNew) {
         this.listOfUUids.clear();
         this.listOfUUids.addAll(listOfUUidsNew);
         notifyDataSetChanged();
     }
 
+    /**
+     * Calls back to the listener to handle the item that was clicked.
+     * @param uuid Unique Identifier for the item that was selected.
+     */
     public void ItemSelected(String uuid) {
         this.recyclerViewSelectItemsListener.ButtonClicked(uuid);
     }
 
+    /**
+     * Gets the number of items in the recycler view.
+     * @return Number of items.
+     */
     @Override
     public int getItemCount() {
         return this.listOfUUids.size();
     }
 
+    /**
+     * Class that represents the viewholder for an audio item in the Recycler View.
+     */
     public class ViewHolderAudio extends RecyclerView.ViewHolder {
 
         public ImageView icon;
@@ -145,6 +191,9 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
         }
     }
 
+    /**
+     * Class that represents the viewholder for a playlist item in the Recycler View.
+     */
     public class ViewHolderPlaylist extends RecyclerView.ViewHolder {
 
         public ImageView icon;

@@ -1,6 +1,5 @@
 package com.example.cloudplaylistmanager.Utils;
 
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -49,6 +48,11 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 
 
+/**
+ * Manages all Data-Related Operations on this Application.
+ * This class is a singleton class. In order for it to function, call the method
+ * 'Initialize' before using any operations related to this class.
+ */
 public class DataManager {
     private static final String LOG_TAG = "DataManager";
     private static final String SAVED_PREFERENCES_NESTED_TAG = "nested";
@@ -56,12 +60,8 @@ public class DataManager {
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
     private static final String EXPORT_DIRECTORY_NAME = "tunestacker-exports";
-    private static final String DEFAULT_THUMBNAIL_LOW = "default_thumbnail_low";
-    private static final String DEFAULT_THUMBNAIL_MED = "default_thumbnail_med";
-    private static final String DEFAULT_THUMBNAIL_HIGH = "default_thumbnail_high";
-    public static final String DEFAULT_THUMBNAIL = DEFAULT_THUMBNAIL_MED;
 
-    private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 10;
+    private static final int MAX_AUDIO_DOWNLOAD_RETRIES = 12;
     private static final int MAX_FETCH_AUDIO_INFO_RETRIES = 6;
 
 
@@ -73,34 +73,42 @@ public class DataManager {
     private SharedPreferences sharedPreferences;
 
     private String dataLastUpdated;
-    private HashMap<String, PlaylistInfo> nestedPlaylistData;  //key is UUID
-    private HashMap<String, PlaylistInfo> importedPlaylistData;//key is UUID
+    private HashMap<String, Bitmap> bitmapCache;                //String is the audio name
+    private HashMap<String, PlaylistInfo> nestedPlaylistData;   //key is UUID
+    private HashMap<String, PlaylistInfo> importedPlaylistData; //key is UUID
     private String lastConstructedLocalPlaylist;
     private PlaylistInfo constructedLocalDataPlaylist;
     private final Context context;
 
-
+    /**
+     * Private Constructor for the instance of {@link DataManager}.
+     * This class is a singleton class, meaning that there can only be one instance
+     * of this class that exists at any given moment.
+     * @param context Context of the Application.
+     */
     private DataManager(Context context) {
         this.context = context;
-
         AndroidNetworking.initialize(context);
+
         try {
             this.appMusicDirectory = GetLocalMusicDirectory(context);
             this.appImageDirectory = GetLocalImageDirectory(context);
             this.exportDirectory = GetExportsDirectory(context);
             this.dataLastUpdated = UUID.randomUUID().toString();
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
-
-
-            YoutubeDL.getInstance().init(context);
-            FFmpeg.getInstance().init(context);
-            this.downloaderInitialized = true;
+            this.bitmapCache = new HashMap<>();
 
             LoadImportedPlaylistsData();
             LoadNestedPlaylistsData();
 
             this.lastConstructedLocalPlaylist = UUID.randomUUID().toString();
             this.constructedLocalDataPlaylist = ConstructPlaylistFromLocalFiles();
+
+            //Initializes various libraries.
+            YoutubeDL.getInstance().init(context);
+            FFmpeg.getInstance().init(context);
+            this.downloaderInitialized = true;
+
         } catch(YoutubeDLException e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
             this.downloaderInitialized = false;
@@ -174,6 +182,7 @@ public class DataManager {
         String json = this.sharedPreferences.getString(SAVED_PREFERENCES_NESTED_TAG,"");
         Type nestedPlaylistsType = new TypeToken<HashMap<String, PlaylistInfo>>(){}.getType();
 
+        //Constructs the nested playlist data.
         this.nestedPlaylistData = gson.fromJson(json,nestedPlaylistsType);
         if(this.nestedPlaylistData == null) {
             this.nestedPlaylistData = new HashMap<>();
@@ -197,6 +206,7 @@ public class DataManager {
             imports = new HashMap<>();
         }
 
+        //Constructs the imported playlist data.
         this.importedPlaylistData = new HashMap<>();
         for(Map.Entry<String, PlaylistInfo> entry : imports.entrySet()) {
             PlaylistInfo playlist = entry.getValue();
@@ -219,6 +229,7 @@ public class DataManager {
             if(playlist != null) {
                 playlist.ClearImportedPlaylists();
 
+                //Re-adds the playlists into the nested playlists.
                 ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
                 for(int index = 0; index < playlistKeys.size(); index++) {
                     if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
@@ -228,12 +239,14 @@ public class DataManager {
                 this.nestedPlaylistData.put(key,playlist);
             }
         }
-        else {//Update all playlists
+        else { //Update all nested playlists
             HashMap<String, PlaylistInfo> otherPlaylistData = new HashMap<>();
+            //Iterates through every nested playlist.
             for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
                 PlaylistInfo playlist = entry.getValue();
                 playlist.ClearImportedPlaylists();
 
+                //Re-adds the playlists into the nested playlists.
                 ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
                 for(int index = 0; index < playlistKeys.size(); index++) {
                     if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
@@ -346,7 +359,7 @@ public class DataManager {
             if(playlist.ContainsAudio(audio)) {
                 return false;
             }
-            playlist.AddVideoToPlaylist(audio);
+            playlist.AddAudioToPlaylist(audio);
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
             SaveNestedData();
@@ -357,7 +370,7 @@ public class DataManager {
             if(playlist.ContainsAudio(audio)) {
                 return false;
             }
-            playlist.AddVideoToPlaylist(audio);
+            playlist.AddAudioToPlaylist(audio);
             this.importedPlaylistData.put(key,playlist);
             RefreshNestedPlaylist(null);
             this.dataLastUpdated = UUID.randomUUID().toString();
@@ -379,7 +392,7 @@ public class DataManager {
         }
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
-            boolean success = playlist.RemoveVideo(audioName);
+            boolean success = playlist.RemoveAudio(audioName);
             if(success) {
                 this.nestedPlaylistData.put(key, playlist);
                 this.dataLastUpdated = UUID.randomUUID().toString();
@@ -389,7 +402,7 @@ public class DataManager {
         }
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
-            boolean success = playlist.RemoveVideo(audioName);
+            boolean success = playlist.RemoveAudio(audioName);
             if(success) {
                 this.importedPlaylistData.put(key, playlist);
                 RefreshNestedPlaylist(null);
@@ -508,7 +521,6 @@ public class DataManager {
      * It is required to implement {@link DownloadListener} to obtain the
      * result of this call and to catch potential errors.
      * onError returns -1 in the attempt parameter if a critical failure occurs.
-     * onError returns 0 if the file already exists.
      * @param url Url of the Audio source.
      * @param downloadFromUrlListener Listener used to get the results/errors of this call.
      */
@@ -535,6 +547,9 @@ public class DataManager {
                     audio.setAuthor(streamInfo.getUploader());
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
+                    audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
+                    audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
+                    audio.setOrigin(url);
 
                     successInfo = true;
                 } catch (YoutubeDLException | InterruptedException e) {
@@ -565,6 +580,7 @@ public class DataManager {
             }
             else {
                 downloadFromUrlListener.onError(-1,"Failed to fetch audio information.");
+                return;
             }
 
             //Performs a download operation.
@@ -601,12 +617,7 @@ public class DataManager {
             }
 
 
-            audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
-            audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
-            audio.setOrigin(url);
-
-
-            //Updates the thumbnail source and type.
+            //Updates the thumbnail source and type. Will also download the thumbnail.
             if(audio.getThumbnailSource() != null) {
                 File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle(),null);
                 if(searchFile == null) {
@@ -641,6 +652,7 @@ public class DataManager {
         InputStream inputStream = null;
         OutputStream outputStream = null;
 
+        //Gets file destination and checks to see if the file already exists.
         File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
 
         String destFileName = fileDestination.getName().split("\\.(?=[^\\.]+$)")[0];
@@ -650,6 +662,7 @@ public class DataManager {
         }
 
         try{
+            //Writes bytes from the input stream into the output stream.
             inputStream = this.context.getContentResolver().openInputStream(from);
             outputStream = new FileOutputStream(fileDestination);
 
@@ -663,6 +676,7 @@ public class DataManager {
             outputStream.flush();
             outputStream.close();
 
+            //Returns a PlaybackAudioInfo with the audio data.
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
             audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
             audio.setAudioSource(fileDestination.getAbsolutePath());
@@ -687,6 +701,7 @@ public class DataManager {
         Thread thread = new Thread(() -> {
             PlaylistInfo playlist = GetPlaylistFromKey(playlistKey);
             if(playlist != null) {
+                //Iterates through all of the audios in the playlist and exports each one.
                 for(PlaybackAudioInfo audio : playlist.getAllVideos()) {
                     ExportSong(audio.getTitle(), playlist.getTitle());
                     exportListener.onProgress("Exporting: " + audio.getTitle());
@@ -709,6 +724,7 @@ public class DataManager {
             return false;
         }
         try {
+            //If optionalDirectory is defined, create a folder to place the contents in instead.
             File fileDestination;
             if(optionalDirectory != null) {
                 File nextDirectory = new File(this.exportDirectory, optionalDirectory);
@@ -721,6 +737,7 @@ public class DataManager {
                 fileDestination = new File(this.exportDirectory, audioFile.getName());
             }
 
+            //Writes bytes from the input stream into the output stream.
             InputStream audioInputStream = new FileInputStream(audioFile);
             OutputStream audioOutputStream = new FileOutputStream(fileDestination);
 
@@ -837,17 +854,20 @@ public class DataManager {
             return this.constructedLocalDataPlaylist;
         }
 
+        //Gets a list of files from the directory.
         File[] files = this.appMusicDirectory.listFiles();
         if(files == null) {
             return null;
         }
         PlaylistInfo playlistInfo = new PlaylistInfo();
 
+        //Iterates through all of the files and constructs an PlaybackAudioInfo class based on the data.
         HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory,null);
         for(File file : files) {
             PlaybackAudioInfo audio = new PlaybackAudioInfo();
             String title = file.getName().split("\\.(?=[^\\.]+$)")[0];
 
+            //Checks to see if a thumbnail image exists for the audio.
             if(directoryMap.containsKey(title)) {
                 audio.setThumbnailSource(directoryMap.get(title).getAbsolutePath());
                 audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
@@ -856,7 +876,7 @@ public class DataManager {
             audio.setAudioSource(file.getAbsolutePath());
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
-            playlistInfo.AddVideoToPlaylist(audio);
+            playlistInfo.AddAudioToPlaylist(audio);
         }
 
         this.lastConstructedLocalPlaylist = this.dataLastUpdated;
@@ -980,11 +1000,12 @@ public class DataManager {
             PlaylistInfo value = entry.getValue();
             pairArray.add(new Pair<>(key, value));
         }
+        //Sorts the playlists by last viewed.
         Collections.sort(pairArray, (left, right) -> {
-            if(left.second.getLastViewed() < right.second.getLastViewed()) {
+            if(left.second.getLastViewed() > right.second.getLastViewed()) {
                 return -1;
             }
-            else if(left.second.getLastViewed() > right.second.getLastViewed()) {
+            else if(left.second.getLastViewed() < right.second.getLastViewed()) {
                 return 1;
             }
             return 0;
@@ -1029,19 +1050,26 @@ public class DataManager {
      * @param audio Audio source.
      * @return Mime Type, returns null if it doesn't exist.
      */
-    public static Bitmap GetThumbnailImage(PlaybackAudioInfo audio) {
+    public Bitmap GetThumbnailImage(PlaybackAudioInfo audio) {
+        if(this.bitmapCache.containsKey(audio.getTitle())) {
+            return this.bitmapCache.get(audio.getTitle());
+        }
         if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
+            //Gets bitmap from external thumbnail file.
             Bitmap bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
             if (bitmap != null) {
+                this.bitmapCache.put(audio.getTitle(), bitmap);
                 return bitmap;
             }
             else {
                 try {
+                    //Gets bitmap from embedded thumbnail image.
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
                     mmr.setDataSource(audio.getAudioSource());
                     byte[] data = mmr.getEmbeddedPicture();
                     if (data != null) {
                         bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
+                        this.bitmapCache.put(audio.getTitle(), bitmap);
                         return bitmap;
                     }
                 } catch (Exception e) {

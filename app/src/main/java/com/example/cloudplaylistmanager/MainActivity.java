@@ -17,8 +17,6 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
-import android.widget.Button;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
 
@@ -30,6 +28,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        //Removes the action bar.
         ActionBar actionBar = getSupportActionBar();
         if(actionBar != null) {
             actionBar.hide();
@@ -40,10 +39,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onStart() {
         super.onStart();
 
+        //Checks and Prompts for read/write storage permissions.
         if(!CheckPermission()) {
             RequestPermission();
         }
 
+        //Initializes the saved data for the application.
         DataManager.Initialize(getApplicationContext());
 
         startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));

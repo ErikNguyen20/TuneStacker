@@ -8,17 +8,29 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 
+/**
+ * Class that manages platform compatibilities for downloading songs and playlists.
+ * Currently is compatible with:
+ *      Youtube - {@link YoutubeUtilities}
+ */
 public class PlatformCompatUtility {
     private static final String LOG_TAG = "PlatformCompatUtility";
     public enum Platform{
-        LOCAL,
         UNKNOWN,
         YOUTUBE,
         SPOTIFY,
         SOUNDCLOUD
     }
 
-
+    /**
+     * Downloads song with the given, valid URL into the MUSIC directory.
+     * It is required to implement {@link DownloadListener} to obtain the
+     * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * onError returns 0 if the file already exists.
+     * @param url Url of the Audio source.
+     * @param downloadListener Listener used to get the results/errors of this call.
+     */
     public static void DownloadSong(String url, DownloadListener downloadListener) {
         Thread thread = new Thread(() -> {
             String processedUrl = ProcessUrl(url);
@@ -48,6 +60,14 @@ public class PlatformCompatUtility {
         thread.start();
     }
 
+    /**
+     * Downloads a playlist with the given, valid URL into the MUSIC directory.
+     * It is required to implement {@link DownloadPlaylistListener} to obtain the
+     * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * @param url Url of the Audio source.
+     * @param downloadListener Listener used to get the results/errors of this call.
+     */
     public static void DownloadPlaylist(String url, DownloadPlaylistListener downloadListener) {
         Thread thread = new Thread(() -> {
             PlaylistInfo fetchedPlaylist = FetchPlaylistFromUrl(url);
@@ -58,7 +78,7 @@ public class PlatformCompatUtility {
                 updatedPlaylist.setLinkSource(fetchedPlaylist.getLinkSource());
 
                 ArrayList<PlaybackAudioInfo> audios = fetchedPlaylist.getInsertedVideos();
-
+                //Iterates through each audio item in the playlist and downloads it.
                 for(int index = 0; index < audios.size(); index++) {
 
                     String songOrigin = audios.get(index).getOrigin();
@@ -66,6 +86,7 @@ public class PlatformCompatUtility {
                     final PlaybackAudioInfo[] fetchedAudio = new PlaybackAudioInfo[1];
                     final boolean[] fetchedAudioModified = new boolean[1];
 
+                    //Downloads the song into the directory.
                     DataManager.getInstance().DownloadSongToDirectoryFromUrl(songOrigin, new DownloadListener() {
                         @Override
                         public void onComplete(PlaybackAudioInfo audio) {
@@ -97,7 +118,7 @@ public class PlatformCompatUtility {
                     }
 
                     if(fetchedAudioModified[0]) {
-                        updatedPlaylist.AddVideoToPlaylist(fetchedAudio[0]);
+                        updatedPlaylist.AddAudioToPlaylist(fetchedAudio[0]);
                         downloadListener.onProgressUpdate("[" + (index + 1) + "/" + audios.size() +
                                 "] Downloaded: " + fetchedAudio[0].getTitle());
                     }
@@ -114,7 +135,16 @@ public class PlatformCompatUtility {
         thread.start();
     }
 
-
+    /**
+     * Syncs playlist with the reference key to the imported playlist.
+     * It is required to implement {@link SyncPlaylistListener} to obtain the
+     * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * All songs that are detected to be new will be automatically downloaded and added to the
+     * referenced imported key.
+     * @param importedKey Key of the imported playlist.
+     * @param playlistListener Listener used to get the results/errors of this call.
+     */
     public static void SyncPlaylist(String importedKey, SyncPlaylistListener playlistListener) {
         Thread thread = new Thread(() -> {
 
@@ -122,6 +152,7 @@ public class PlatformCompatUtility {
             if(localPlaylist != null && localPlaylist.getLinkSource() != null && !localPlaylist.getLinkSource().isEmpty()) {
                 String playlistUrlSource = localPlaylist.getLinkSource();
 
+                //Gets the playlist from DataManager
                 playlistListener.onProgress("Fetching song sources from the Playlist.");
                 PlaylistInfo updatedPlaylist = FetchPlaylistFromUrl(playlistUrlSource);
                 if(updatedPlaylist == null) {
@@ -131,7 +162,7 @@ public class PlatformCompatUtility {
 
 
                 ArrayList<PlaybackAudioInfo> queue = null;
-                //Platform compats can be added here.
+                //Platform compatibilities can be added here. Utilities must return arraylist of PlaybackAudioInfo.
                 Platform playlistSource = PlaylistUrlSource(playlistUrlSource);
                 switch (playlistSource) {
                     case YOUTUBE:
@@ -143,6 +174,7 @@ public class PlatformCompatUtility {
 
 
                 if(queue != null && !queue.isEmpty()) {
+                    //Goes through queue and downloads each of the songs.
                     for(int index = 0; index < queue.size(); index++) {
                         PlaybackAudioInfo audio = queue.get(index);
                         playlistListener.onProgress("[" + (index+1) + "/" + queue.size() + "] Downloading " + audio.getTitle());
@@ -184,6 +216,16 @@ public class PlatformCompatUtility {
         thread.start();
     }
 
+    /**
+     * Syncs multiple playlists with the given reference keys.
+     * It is required to implement {@link SyncPlaylistListener} to obtain the
+     * result of this call and to catch potential errors.
+     * onError returns -1 in the attempt parameter if a critical failure occurs.
+     * All songs that are detected to be new will be automatically downloaded and added to the
+     * referenced imported key.
+     * @param importedKeys ArrayList of Keys of the imported playlists.
+     * @param playlistListener Listener used to get the results/errors of this call.
+     */
     public static void SyncPlaylistsMultiple(ArrayList<String> importedKeys, SyncPlaylistListener playlistListener) {
         if(importedKeys == null || importedKeys.isEmpty()) {
             playlistListener.onComplete();
@@ -191,13 +233,14 @@ public class PlatformCompatUtility {
         }
         Thread thread = new Thread(() -> {
             HashSet<String> completedKeys = new HashSet<>();
-
+            //Iterates through the imported keys and syncs each of them individually.
             for(String key : importedKeys) {
                 if(completedKeys.contains(key)) {
                     continue;
                 }
 
                 final CountDownLatch latch = new CountDownLatch(1);
+                //Syncs the individual playlist.
                 SyncPlaylist(key, new SyncPlaylistListener() {
                     @Override
                     public void onComplete() {
@@ -232,7 +275,12 @@ public class PlatformCompatUtility {
         thread.start();
     }
 
-
+    /**
+     * Processes and converts the url link into a usable link that the downloader can handle.
+     * Based on the added compatibilities, the link will be processed in different ways.
+     * @param url Original url of the audio.
+     * @return Usable download link.
+     */
     public static String ProcessUrl(String url) {
         Platform urlSource = AudioUrlSource(url);
 
@@ -259,6 +307,13 @@ public class PlatformCompatUtility {
         return result.toString().isEmpty() ? null : result.toString();
     }
 
+    /**
+     * Fetches the list of playlist items from the given url link.
+     * Based on the added compatibilities, the playlist items will be processed to work with the
+     * downloader.
+     * @param url Original url of the audio.
+     * @return Playlist of audios.
+     */
     public static PlaylistInfo FetchPlaylistFromUrl(String url) {
         //Determines which playlist source the url is from.
         Platform playlistSource = PlaylistUrlSource(url);
@@ -297,7 +352,12 @@ public class PlatformCompatUtility {
         return playlistModified[0] ? playlist[0] : null;
     }
 
-
+    /**
+     * Detects and returns the platform that the audio url originates from.
+     * Detection is based on the added Compatibilities of this class.
+     * @param url Original url of the audio.
+     * @return {@link Platform}
+     */
     public static Platform AudioUrlSource(String url) {
         if(YoutubeUtilities.ExtractVideoIdFromUrl(url) != null) {
             return Platform.YOUTUBE;
@@ -307,6 +367,12 @@ public class PlatformCompatUtility {
         }
     }
 
+    /**
+     * Detects and returns the platform that the playlist url originates from.
+     * Detection is based on the added Compatibilities of this class.
+     * @param url Original url of the playlist.
+     * @return {@link Platform}
+     */
     public static Platform PlaylistUrlSource(String url) {
         if(YoutubeUtilities.ExtractPlaylistIdFromUrl(url) != null) {
             return Platform.YOUTUBE;

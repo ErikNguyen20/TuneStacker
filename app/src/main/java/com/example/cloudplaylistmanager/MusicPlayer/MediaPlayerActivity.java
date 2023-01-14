@@ -21,8 +21,6 @@ import android.content.res.ColorStateList;
 import android.content.res.TypedArray;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.media.MediaMetadata;
-import android.media.session.MediaSession;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -45,15 +43,19 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * Media Player Activity that serves as an interface for {@link MusicService}.
+ * This Class handles all events between the UI, the media player, and the
+ * popup notification.
+ */
 public class MediaPlayerActivity extends AppCompatActivity {
     public static final String SERIALIZE_TAG = "data";
     public static final String POSITION_TAG = "position";
     public static final String SHUFFLED_TAG = "shuffle";
-    private static final int NOTIFICATION_UPDATE_LIMITER = 4;
+    private static final int NOTIFICATION_UPDATE_LIMITER = 5;
 
     private ImageView mediaPlayerIcon;
     private TextView mediaPlayerTitle;
@@ -77,7 +79,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
     private MediaSessionCompat mediaSession;
     private ServiceConnection musicServiceConnection;
     private Handler handler;
-    private BroadcastReceiver updateNotificationReciver;
+    private BroadcastReceiver updateNotificationReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -105,8 +107,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
         else {
             this.startingPosition = getIntent().getIntExtra(POSITION_TAG,-1);
         }
-
-
         this.handler = new Handler();
         this.rateLimit = 0;
 
@@ -119,6 +119,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 MusicService.MusicServiceBinder binder = (MusicService.MusicServiceBinder) iBinder;
                 musicService = binder.getBinder();
                 if(playlistInfo != null) {
+                    //Starts the Media Player.
                     ArrayList<PlaybackAudioInfo> allSongs = new ArrayList<>();
                     allSongs.addAll(playlistInfo.getAllVideos());
                     startingPosition = startingPosition % allSongs.size();
@@ -161,21 +162,18 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 onPlayClicked();
             }
         });
-
         this.mediaPlayerSkipNext.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 onNextClicked();
             }
         });
-
         this.mediaPlayerSkipPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 onPrevClicked();
             }
         });
-
         this.mediaPlayerShuffle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -184,7 +182,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 }
             }
         });
-
         this.mediaPlayerRepeat.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -193,7 +190,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 }
             }
         });
-
         this.mediaPlayerSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
@@ -204,16 +200,16 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {}
-
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
 
         //Sets receiver for the notification broadcast.
+        //The broadcast originates from the Notification Buttons.
         IntentFilter filter = new IntentFilter();
         filter.addAction(NotificationReceiver.MEDIA_NOTIFICATION_ACTION);
-        this.updateNotificationReciver = new BroadcastReceiver() {
+        this.updateNotificationReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (intent != null) {
@@ -230,7 +226,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 }
             }
         };
-        registerReceiver(this.updateNotificationReciver, filter);
+        registerReceiver(this.updateNotificationReceiver, filter);
 
 
         //Instantiates new Recycler View and sets the adapter.
@@ -252,7 +248,11 @@ public class MediaPlayerActivity extends AppCompatActivity {
         this.songRecyclerView.setAdapter(this.songsAdapter);
     }
 
-
+    /**
+     * Initializes and starts the Media Player. Also handles most
+     * of the events of the media player.
+     * @param allSongs Array list of the songs that will be played.
+     */
     public void StartMediaPlayer(ArrayList<PlaybackAudioInfo> allSongs) {
         this.musicService.InitializePlayer(allSongs,new OnUpdatePlayerListener() {
             @Override
@@ -310,7 +310,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
         //Begin Playing the song.
         this.musicService.BeginPlaying(this.startingPosition,this.shuffled,true);
 
-        //Updates the Seek Bar
+        //Updates the Seek Bar and Notification.
         this.handler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -330,6 +330,9 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * Handles the Media Player Pause/Play click event.
+     */
     public void onPlayClicked() {
         if(this.musicService != null) {
             if(this.musicService.IsPaused()) {
@@ -340,12 +343,18 @@ public class MediaPlayerActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Handles the Media Player Next click event.
+     */
     public void onNextClicked() {
         if(this.musicService != null) {
             this.musicService.SwitchSong(MusicService.NEXT_SONG_IGNORED);
         }
     }
 
+    /**
+     * Handles the Media Player Previous click event.
+     */
     public void onPrevClicked() {
         if(musicService != null) {
             musicService.SwitchSong(MusicService.NEXT_SONG_PREV);
@@ -353,8 +362,13 @@ public class MediaPlayerActivity extends AppCompatActivity {
     }
 
 
+    /**
+     * Gets the thumbnail bitmap of the audio.
+     * @param audio Audio information.
+     * @return Bitmap of the audio.
+     */
     public Bitmap GetMediaPlayerIcon(PlaybackAudioInfo audio) {
-        Bitmap bitmap = DataManager.GetThumbnailImage(audio);
+        Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(audio);
         if(bitmap != null) {
             return bitmap;
         }
@@ -363,11 +377,21 @@ public class MediaPlayerActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Converts a time in milliseconds to a formatted string.
+     * @param time Time in milliseconds.
+     * @return Formatted time as a string.
+     */
     public static String ConvertTimeUnitsToString(int time) {
         return String.format(Locale.US,"%02d:%02d",TimeUnit.MILLISECONDS.toMinutes(time),
                 TimeUnit.MILLISECONDS.toSeconds(time) - TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(time)));
     }
 
+    /**
+     * Gets the color code based on the attribute set by the current theme.
+     * @param attribute Color attribute defined by the theme.
+     * @return Color code based on the attribute.
+     */
     public int FetchColor(int attribute) {
         TypedArray a = this.obtainStyledAttributes(new TypedValue().data, new int[] { attribute });
         int color = a.getColor(0, 0);
@@ -381,8 +405,8 @@ public class MediaPlayerActivity extends AppCompatActivity {
         if(this.handler != null) {
             this.handler.removeCallbacksAndMessages(null);
         }
-        if(this.updateNotificationReciver != null) {
-            unregisterReceiver(this.updateNotificationReciver);
+        if(this.updateNotificationReceiver != null) {
+            unregisterReceiver(this.updateNotificationReceiver);
         }
         NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.cancel(0);
@@ -402,21 +426,28 @@ public class MediaPlayerActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * Updates the Notification of the Media Player.
+     * This is throttled by NOTIFICATION_UPDATE_LIMITER.
+     */
     public void ShowNotification() {
         if(this.musicService == null || (this.rateLimit++) % NOTIFICATION_UPDATE_LIMITER != 0) {
             return;
         }
 
+        //Sets the Icon Drawable.
         int playIcon = R.drawable.ic_baseline_pause_circle_outline_24;
         if(this.musicService.IsPaused()) {
             playIcon = R.drawable.ic_baseline_play_circle_outline_24;
         }
 
+        //Removes the Seekbar from the notification.
         this.mediaSession.setMetadata(new MediaMetadataCompat.Builder()
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,-1)
                 .build()
         );
 
+        //Sets the intent broadcasts for when the buttons are clicked in the notification.
         Intent intent = new Intent(this, MediaPlayerActivity.class);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0, intent, 0);
 
@@ -428,6 +459,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
         PendingIntent prevPendingIntent = PendingIntent.getBroadcast(this,0,prevIntent,PendingIntent.FLAG_UPDATE_CURRENT);
 
 
+        //Builds the notification based on the current media player's audio information.
         Bitmap image = GetMediaPlayerIcon(this.musicService.GetAudioInfo());
 
         Notification notification = new NotificationCompat.Builder(this, ApplicationClass.CHANNEL_ID_2)

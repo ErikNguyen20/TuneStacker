@@ -37,6 +37,11 @@ import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
+/**
+ * Popup Dialog Activity that implements the interface to download a new Song or Playlist.
+ * IntentExtra IS_PLAYLIST_TAG must be sent to determine if the popup will be for adding
+ * an audio file or for adding a playlist.
+ */
 public class AddNewPopupSingleActivity extends AppCompatActivity {
     private static final String LOG_TAG = "PopupSingleActivity";
     private static final String WAKE_LOCK_TAG = "popup:single";
@@ -99,6 +104,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        //Gets data from the intent extras.
         this.uuidParentKey = getIntent().getStringExtra(PARENT_UUID_KEY_TAG);
         this.isPlaylist = getIntent().getBooleanExtra(IS_PLAYLIST_TAG,false);
 
@@ -329,6 +335,10 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Gets the connectivity status of the application.
+     * @return Connectivity Code. {@link ConnectivityManager}
+     */
     public int GetConnectivityStatus() {
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();

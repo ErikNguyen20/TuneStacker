@@ -51,7 +51,7 @@ public class AllSongsFragment extends Fragment {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
-        this.adapter = new SongsOptionsRecyclerAdapter(getContext(), this.playlist, true, new RecyclerViewOptionsListener() {
+        this.adapter = new SongsOptionsRecyclerAdapter(getContext(), this.playlist, true, R.menu.song_item_options, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {

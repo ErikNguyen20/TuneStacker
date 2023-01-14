@@ -19,6 +19,7 @@ public class NotificationReceiver extends BroadcastReceiver {
                     case ApplicationClass.ACTION_PLAY:
                     case ApplicationClass.ACTION_NEXT:
                     case ApplicationClass.ACTION_PREV:
+                        //Broadcasts the button actions to the media player.
                         Intent local = new Intent();
                         local.setAction(MEDIA_NOTIFICATION_ACTION);
                         local.putExtra(MEDIA_NOTIFICATION_ACTION_KEY, intent.getAction());

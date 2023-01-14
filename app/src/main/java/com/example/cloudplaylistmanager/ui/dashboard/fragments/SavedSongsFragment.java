@@ -39,6 +39,8 @@ import com.example.cloudplaylistmanager.MainActivity;
 import com.example.cloudplaylistmanager.MusicPlayer.MediaPlayerActivity;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewItemClickedListener;
+import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
+import com.example.cloudplaylistmanager.RecyclerAdapters.SongsOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsRecyclerAdapter;
 import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.DownloadListener;
@@ -55,7 +57,7 @@ import java.io.File;
 public class SavedSongsFragment extends Fragment {
 
     private PlaylistInfo savedSongs;
-    private SongsRecyclerAdapter songsAdapter;
+    private SongsOptionsRecyclerAdapter songsAdapter;
     private DashboardViewModel viewModel;
 
 
@@ -74,9 +76,22 @@ public class SavedSongsFragment extends Fragment {
         songRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
         //Implement a listener to capture clicks on the recycler view items.
-        this.songsAdapter = new SongsRecyclerAdapter(getContext(), this.savedSongs, true, new RecyclerViewItemClickedListener() {
+        this.songsAdapter = new SongsOptionsRecyclerAdapter(getContext(), this.savedSongs, true, R.menu.single_song_item_option, new RecyclerViewOptionsListener() {
             @Override
-            public void onClicked(int viewType, int position) {
+            public void SelectMenuOption(int position, int itemId, String optional) {
+                if(itemId == R.id.export_option) {
+                    boolean success = DataManager.getInstance().ExportSong(optional,null);
+                    if(success) {
+                        Toast.makeText(getActivity(),"Song Successfully Exported.",Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        Toast.makeText(getActivity(),"Song Failed to Export.",Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+
+            @Override
+            public void ButtonClicked(int viewType, int position) {
                 if(viewType != SongsRecyclerAdapter.ADD_ITEM_TOKEN) {
                     Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,savedSongs);
@@ -90,6 +105,7 @@ public class SavedSongsFragment extends Fragment {
             }
         });
         songRecyclerView.setAdapter(this.songsAdapter);
+
 
         //Fetches data from the ViewModel.
         this.viewModel = new ViewModelProvider(requireParentFragment()).get(DashboardViewModel.class);

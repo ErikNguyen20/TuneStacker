@@ -186,7 +186,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         this.subtitle.setText(new String(" " + this.playlistInfo.getAllVideos().size() + " songs"));
         if(!this.playlistInfo.getAllVideos().isEmpty()) {
             PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
-            Bitmap bitmap = DataManager.GetThumbnailImage(sourceAudio);
+            Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(sourceAudio);
             if(bitmap != null) {
                 this.icon.setImageBitmap(bitmap);
             }

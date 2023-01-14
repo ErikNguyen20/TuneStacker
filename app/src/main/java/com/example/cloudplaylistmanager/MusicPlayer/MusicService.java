@@ -252,6 +252,7 @@ public class MusicService extends Service implements
         }
 
         if(overridePosition == NEXT_SONG_PREV) {
+            //Sets the currentPlayPosition to the previous song.
             this.songCounter--;
             if(this.songCounter < 0) {
                 GenerateShuffledList();
@@ -265,6 +266,7 @@ public class MusicService extends Service implements
             }
         }
         else if(overridePosition == NEXT_SONG_IGNORED) {
+            //Sets the currentPlayPosition to the next song.
             this.songCounter++;
             if(this.songCounter >= this.playlist.size()) {
                 if(!this.isRepeat) {
@@ -274,6 +276,7 @@ public class MusicService extends Service implements
                     stopSelf();
                     return;
                 }
+                //If the song counter reaches the end of the list, re-generate a shuffled list.
                 GenerateShuffledList();
                 this.songCounter = 0;
             }
@@ -284,7 +287,8 @@ public class MusicService extends Service implements
                 this.currentPlayPosition = this.songCounter;
             }
         }
-        else { //Force select song
+        else {
+            //Force select song
             this.songCounter = overridePosition % this.playlist.size();
             this.currentPlayPosition = this.songCounter;
         }
@@ -314,7 +318,6 @@ public class MusicService extends Service implements
                 case UNKNOWN:
                     throw new Exception("Unknown Media Source");
             }
-            Log.d("MusicPlayer","Preparing...");
             mediaPlayer.prepareAsync();
         } catch(Exception e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
@@ -404,6 +407,9 @@ public class MusicService extends Service implements
         return false;
     }
 
+    /**
+     * Handles Audio Focus Change.
+     */
     @Override
     public void onAudioFocusChange(int focusChange) {
         switch(focusChange) {

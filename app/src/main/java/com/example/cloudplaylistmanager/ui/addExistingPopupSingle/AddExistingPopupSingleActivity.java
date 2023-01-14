@@ -7,7 +7,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import android.os.Bundle;
 import android.util.Pair;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +25,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Popup Dialog Activity that implements the interface to add an existing Song or Playlist.
+ * IntentExtra IS_PLAYLIST_TAG must be sent to determine if the popup will be for adding
+ * an audio file or for adding a playlist.
+ * IntentExtra PARENT_UUID_TAG must be sent to add the songs/playlists to the correct playlist.
+ */
 public class AddExistingPopupSingleActivity extends AppCompatActivity {
     public static final String IS_PLAYLIST_TAG = "is_playlist";
     public static final String PARENT_UUID_TAG = "playlist_parent_uuid";
@@ -46,6 +51,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_existing_popup_single);
 
+        //Gets the data passed through by the intent extras.
         this.isPlaylist = getIntent().getBooleanExtra(IS_PLAYLIST_TAG,false);
         this.uuidParentKey = getIntent().getStringExtra(PARENT_UUID_TAG);
         if(this.uuidParentKey != null && this.uuidParentKey.isEmpty()) {
@@ -165,6 +171,9 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
     }
 
 
+    /**
+     * Adds the songs/playlists based on the items that the user selected.
+     */
     public void ConfirmAddButton() {
         if(this.selectedItems.isEmpty()) {
             this.finish();
@@ -200,6 +209,10 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         this.finish();
     }
 
+    /**
+     * Filters the Recycler View based on the text query.
+     * @param query Text Input query
+     */
     public void FilterDataset(String query) {
         if(query == null) {
             query = "";

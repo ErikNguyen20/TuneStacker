@@ -88,7 +88,6 @@ public class ImportedFragment extends Fragment {
              }
         });
 
-        Log.e("ImportedFragment", "OnCreateView");
         return view;
     }
 

@@ -1,6 +1,5 @@
 package com.example.cloudplaylistmanager.Platforms;
 
-import android.content.Context;
 import android.util.Log;
 
 
@@ -20,6 +19,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 
+/**
+ * Youtube Utility class that adds Compatibility for the platform Youtube.
+ */
 public class YoutubeUtilities {
     private static final String LOG_TAG = "YoutubeUtilities";
     private static final String API_KEY = "AIzaSyDRtock8Du8PQSV4h0oVYMJHvwsI233TJg"; //Comes from "https://console.cloud.google.com/"
@@ -111,6 +113,7 @@ public class YoutubeUtilities {
                 numSongs += MAX_RESULTS;
             }
 
+            //Gets the playlist's metadata (Title of the playlist)
             YoutubePlaylistInfo playlistMetadata = GetPlaylistInfo(extractedPlaylistID);
             if(playlistMetadata != null) {
                 playlistInfo.setTitle(playlistMetadata.getTitle());
@@ -141,7 +144,7 @@ public class YoutubeUtilities {
         //Makes the Get Request and parses results into a YtPlaylistInfo object.
         JSONObject result = DataManager.MakeGetRequest("https://www.googleapis.com/youtube/v3/playlists",params);
         if(result != null) {
-            //Parse result
+            //Parse metadata result
             try {
                 YoutubePlaylistInfo playlistInfo = new YoutubePlaylistInfo();
 
@@ -171,6 +174,7 @@ public class YoutubeUtilities {
             return null;
         }
         try {
+            //Parses the playlist item's metadata.
             YoutubePlaylistInfo playlistResult = new YoutubePlaylistInfo();
             if(result.has("nextPageToken")) {
                 playlistResult.SetNextPageToken(result.getString("nextPageToken"));
@@ -201,7 +205,7 @@ public class YoutubeUtilities {
                 video.setOrigin(BASE_VIDEO_URL + item.getJSONObject("resourceId").getString("videoId"));
                 video.setAudioType(PlaybackAudioInfo.PlaybackMediaType.UNKNOWN);
 
-                playlistResult.AddVideoToPlaylist(video);
+                playlistResult.AddAudioToPlaylist(video);
             }
             return playlistResult;
         } catch(Exception e) {
@@ -274,7 +278,8 @@ public class YoutubeUtilities {
         }
 
         public void MergePlaylists(YoutubePlaylistInfo other) {
-            super.MergePlaylists(other);
+            this.insertedVideos.addAll(other.insertedVideos);
+            UpdateAllVideos();
             this.nextPageToken = other.nextPageToken;
         }
     }

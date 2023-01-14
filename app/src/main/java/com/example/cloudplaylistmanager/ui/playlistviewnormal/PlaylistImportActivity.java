@@ -151,7 +151,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.recyclerView.setHasFixedSize(true);
         this.recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        this.adapter = new SongsOptionsRecyclerAdapter(this, this.playlistInfo, false, new RecyclerViewOptionsListener() {
+        this.adapter = new SongsOptionsRecyclerAdapter(this, this.playlistInfo, false, R.menu.song_item_options, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
@@ -212,7 +212,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.source.setSelected(true);
         if(!this.playlistInfo.getAllVideos().isEmpty()) {
             PlaybackAudioInfo sourceAudio = this.playlistInfo.getAllVideos().iterator().next();
-            Bitmap bitmap = DataManager.GetThumbnailImage(sourceAudio);
+            Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(sourceAudio);
             if(bitmap != null) {
                 this.icon.setImageBitmap(bitmap);
             }
