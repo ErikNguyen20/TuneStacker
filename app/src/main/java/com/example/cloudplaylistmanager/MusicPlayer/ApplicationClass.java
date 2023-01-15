@@ -23,9 +23,9 @@ public class ApplicationClass extends Application {
      */
     private void CreateNotificationChannel() {
         if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel notificationChannel1 = new NotificationChannel(CHANNEL_ID_1, "Channel1", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel notificationChannel1 = new NotificationChannel(CHANNEL_ID_1, "Channel1", NotificationManager.IMPORTANCE_DEFAULT);
             notificationChannel1.setDescription("Channel 1 Description");
-            NotificationChannel notificationChannel2 = new NotificationChannel(CHANNEL_ID_2, "Media Player Notification", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel notificationChannel2 = new NotificationChannel(CHANNEL_ID_2, "Media Player Notification", NotificationManager.IMPORTANCE_DEFAULT);
             notificationChannel2.setDescription("A Media Player Notification that displays the currently playing Song.");
 
             NotificationManager notificationManager = getSystemService(NotificationManager.class);

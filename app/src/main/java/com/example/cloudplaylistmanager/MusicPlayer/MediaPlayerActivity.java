@@ -75,6 +75,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
     private int startingPosition;
     private boolean shuffled;
     private int rateLimit = 0;
+    private int currentSongPosition = 0;
     private MusicService musicService = null;
     private MediaSessionCompat mediaSession;
     private ServiceConnection musicServiceConnection;
@@ -194,6 +195,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 if(musicService != null && b) {
+                    currentSongPosition = i;
                     musicService.SeekTo(i);
                 }
             }
@@ -284,6 +286,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onSongChange(PlaybackAudioInfo audio, int position) {
+                currentSongPosition = 0;
                 mediaPlayerTitle.setText(audio.getTitle());
                 mediaPlayerIcon.setImageBitmap(GetMediaPlayerIcon(audio));
 
@@ -311,24 +314,31 @@ public class MediaPlayerActivity extends AppCompatActivity {
         this.musicService.BeginPlaying(this.startingPosition,this.shuffled,true);
 
         //Updates the Seek Bar and Notification.
-        this.handler.postDelayed(new Runnable() {
+        this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    if (musicService != null) {
-                        mediaPlayerSeekBar.setProgress(musicService.GetCurrentPosition());
-                        mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(musicService.GetCurrentPosition()));
-                        //Updates notification.
-                        ShowNotification();
-                    }
-                } catch(Exception e) {
-                    mediaPlayerSeekBar.setProgress(0);
-                    mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(0));
-                }
-                handler.postDelayed(this,100);
-            }
-        },0);
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            if (musicService != null) {
+                                int pos = musicService.GetCurrentPosition();
+                                currentSongPosition = pos != 0 ? pos : currentSongPosition;
 
+                                mediaPlayerSeekBar.setProgress(currentSongPosition);
+                                mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(currentSongPosition));
+                                //Updates notification.
+                                ShowNotification();
+                            }
+                        } catch(Exception e) {
+                            mediaPlayerSeekBar.setProgress(0);
+                            mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(0));
+                        }
+                        handler.postDelayed(this,100);
+                    }
+                },0);
+            }
+        });
     }
 
     /**
@@ -474,7 +484,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
                 .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                         .setMediaSession(this.mediaSession.getSessionToken())
                         .setShowActionsInCompactView(0))
-                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(contentIntent)
                 .setOnlyAlertOnce(true)
