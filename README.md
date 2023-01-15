@@ -33,6 +33,14 @@ This app's primary functionality stems from [youtubedl-android](https://github.c
 **API Keys**
 
 API keys must be supplied for the various platforms that the app supports.
+ - [Youtube API](https://developers.google.com/youtube/v3)
+
+After obtaining the key(s), they must be set in your project root's `local.properties` file:
+
+```
+# Youtube API v3
+YT_API_KEY=<insert>
+```
 
 <br/>
  
