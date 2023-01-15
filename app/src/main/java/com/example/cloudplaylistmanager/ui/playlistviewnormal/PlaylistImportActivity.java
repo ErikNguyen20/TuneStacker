@@ -89,7 +89,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
             return;
         }
 
-
         //Sets up the UI.
         this.icon = findViewById(R.id.imageView_playlist);
         this.title = findViewById(R.id.playlist_title);
@@ -100,7 +99,6 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.recyclerView = findViewById(R.id.recyclerView_allSongs);
 
         UpdateUI();
-
 
         //Sets the click listener for the Play All button.
         this.playAll.setOnClickListener(new View.OnClickListener() {

@@ -21,6 +21,7 @@ public class PlaylistNestedViewModel extends ViewModel {
 
     public void updateData(String key) {
         String recentUpdate = DataManager.getInstance().GetDataLastUpdate();
+        //Only induce an update on the UI if the data was actually updated in DataManager.
         if(this.lastUpdated == null ||
                 !recentUpdate.equals(this.lastUpdated.getValue())) {
 

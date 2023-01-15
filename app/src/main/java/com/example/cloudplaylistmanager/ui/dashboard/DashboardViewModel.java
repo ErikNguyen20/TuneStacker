@@ -1,6 +1,5 @@
 package com.example.cloudplaylistmanager.ui.dashboard;
 
-import android.util.Log;
 import android.util.Pair;
 
 import androidx.lifecycle.LiveData;
@@ -8,11 +7,9 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
-import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 
 public class DashboardViewModel extends ViewModel {
 
@@ -47,6 +44,7 @@ public class DashboardViewModel extends ViewModel {
 
     public void updateData() {
         String recentUpdate = DataManager.getInstance().GetDataLastUpdate();
+        //Only induce an update on the UI if the data was actually updated in DataManager.
         if(this.lastUpdate.getValue() == null ||
                 !recentUpdate.equals(this.lastUpdate.getValue())) {
 
@@ -63,7 +61,6 @@ public class DashboardViewModel extends ViewModel {
 
             PlaylistInfo fetchedSavedSongs = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
             if(fetchedSavedSongs != null) {
-                fetchedSavedSongs.setTitle("Saved Songs");
                 this.localVideos.postValue(fetchedSavedSongs);
             }
 

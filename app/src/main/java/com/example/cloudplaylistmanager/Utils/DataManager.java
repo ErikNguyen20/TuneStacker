@@ -58,6 +58,7 @@ public class DataManager {
     private static final String LOG_TAG = "DataManager";
     private static final String SAVED_PREFERENCES_NESTED_TAG = "nested";
     private static final String SAVED_PREFERENCES_IMPORT_TAG = "import";
+    private static final String SAVED_PREFERENCES_SETTINGS_TAG = "settings";
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
     private static final String EXPORT_DIRECTORY_NAME = "tunestacker-exports";
@@ -77,6 +78,7 @@ public class DataManager {
     private HashMap<String, Bitmap> bitmapCache;                //String is the audio name
     private HashMap<String, PlaylistInfo> nestedPlaylistData;   //key is UUID
     private HashMap<String, PlaylistInfo> importedPlaylistData; //key is UUID
+    private SettingsHolder settings;
     private String lastConstructedLocalPlaylist;
     private PlaylistInfo constructedLocalDataPlaylist;
     private final Context context;
@@ -99,7 +101,8 @@ public class DataManager {
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
             this.bitmapCache = new HashMap<>();
 
-
+            //Loads saved data
+            LoadSettingsData();
             LoadImportedPlaylistsData();
             LoadNestedPlaylistsData();
 
@@ -146,10 +149,8 @@ public class DataManager {
 
         Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
         String jsonNestedResult = gson.toJson(this.nestedPlaylistData);
-        String jsonImportResult = gson.toJson(this.importedPlaylistData);
 
-        editor.putString(SAVED_PREFERENCES_NESTED_TAG,jsonNestedResult);
-        editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
+        editor.putString(SAVED_PREFERENCES_NESTED_TAG, jsonNestedResult);
         editor.apply();
     }
 
@@ -162,7 +163,7 @@ public class DataManager {
         Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
         String jsonImportResult = gson.toJson(this.importedPlaylistData);
 
-        editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
+        editor.putString(SAVED_PREFERENCES_IMPORT_TAG, jsonImportResult);
         editor.apply();
     }
 
@@ -170,7 +171,13 @@ public class DataManager {
      * Saves all Settings data to {@link SharedPreferences}.
      */
     public void SaveSettingsData() {
+        SharedPreferences.Editor editor = this.sharedPreferences.edit();
 
+        Gson gson = new GsonBuilder().excludeFieldsWithoutExposeAnnotation().serializeNulls().create();
+        String jsonSettingsResult = gson.toJson(this.settings);
+
+        editor.putString(SAVED_PREFERENCES_SETTINGS_TAG, jsonSettingsResult);
+        editor.apply();
     }
 
     /**
@@ -225,6 +232,42 @@ public class DataManager {
         }
 
         this.dataLastUpdated = UUID.randomUUID().toString();
+    }
+
+    /**
+     * Loads the Settings Data from {@link SharedPreferences}.
+     */
+    public void LoadSettingsData() {
+        //Gets settings through gson and shared preferences.
+        Gson gson = new Gson();
+        String json = this.sharedPreferences.getString(SAVED_PREFERENCES_SETTINGS_TAG,"");
+        Type settingsType = new TypeToken<SettingsHolder>(){}.getType();
+
+        SettingsHolder fetchedSettings = gson.fromJson(json, settingsType);
+        if(fetchedSettings == null) {
+            this.settings = new SettingsHolder();
+        }
+        else {
+            this.settings = fetchedSettings;
+        }
+    }
+
+    /**
+     * Returns the settings of the application.
+     * @return Settings object.
+     */
+    public SettingsHolder GetSettings() {
+        return this.settings;
+    }
+
+    /**
+     * Sets a field in the settings object to a specified value.
+     * @param field Field of the settings item.
+     * @param value New value of the field.
+     */
+    public void SetSettingsField(SettingsHolder.SettingsFields field, Object value) {
+        this.settings.changeSettingsItem(field, value);
+        SaveSettingsData();
     }
 
     /**
@@ -630,8 +673,10 @@ public class DataManager {
             request.addOption("--retries",10);
             request.addOption("--no-check-certificate");
             request.addOption("--no-mtime");
-            request.addOption("--embed-thumbnail");
-            request.addOption("--audio-format", "opus");
+            if(this.settings.embedThumbnail) {
+                request.addOption("--embed-thumbnail");
+            }
+            request.addOption("--audio-format", this.settings.extension);
             request.addOption("-o", this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".%(ext)s");
 
             int downloadAttemptNumber = 1;
@@ -658,7 +703,7 @@ public class DataManager {
 
 
             //Updates the thumbnail source and type. Will also download the thumbnail.
-            if(audio.getThumbnailSource() != null) {
+            if(audio.getThumbnailSource() != null && this.settings.downloadThumbnail) {
                 File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle(),null);
                 if(searchFile == null) {
                     File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle() + ".bin");
@@ -900,6 +945,7 @@ public class DataManager {
             return null;
         }
         PlaylistInfo playlistInfo = new PlaylistInfo();
+        playlistInfo.setTitle("Saved Songs");
 
         //Iterates through all of the files and constructs an PlaybackAudioInfo class based on the data.
         HashMap<String,File> directoryMap = GetMapOfFileDirectory(this.appImageDirectory,null);
