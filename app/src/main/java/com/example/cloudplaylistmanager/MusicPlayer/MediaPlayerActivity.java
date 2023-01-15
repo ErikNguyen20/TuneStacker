@@ -75,7 +75,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
     private int startingPosition;
     private boolean shuffled;
     private int rateLimit = 0;
-    private int currentSongPosition = 0;
     private MusicService musicService = null;
     private MediaSessionCompat mediaSession;
     private ServiceConnection musicServiceConnection;
@@ -195,7 +194,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 if(musicService != null && b) {
-                    currentSongPosition = i;
                     musicService.SeekTo(i);
                 }
             }
@@ -286,7 +284,6 @@ public class MediaPlayerActivity extends AppCompatActivity {
 
             @Override
             public void onSongChange(PlaybackAudioInfo audio, int position) {
-                currentSongPosition = 0;
                 mediaPlayerTitle.setText(audio.getTitle());
                 mediaPlayerIcon.setImageBitmap(GetMediaPlayerIcon(audio));
 
@@ -323,12 +320,10 @@ public class MediaPlayerActivity extends AppCompatActivity {
                         try {
                             if (musicService != null) {
                                 int pos = musicService.GetCurrentPosition();
-                                currentSongPosition = pos != 0 ? pos : currentSongPosition;
-
-                                mediaPlayerSeekBar.setProgress(currentSongPosition);
-                                mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(currentSongPosition));
+                                mediaPlayerSeekBar.setProgress(pos);
+                                mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(pos));
                                 //Updates notification.
-                                ShowNotification();
+                                //ShowNotification();
                             }
                         } catch(Exception e) {
                             mediaPlayerSeekBar.setProgress(0);
@@ -419,8 +414,12 @@ public class MediaPlayerActivity extends AppCompatActivity {
         if(this.updateNotificationReceiver != null) {
             unregisterReceiver(this.updateNotificationReceiver);
         }
-        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        notificationManager.cancel(0);
+        try {
+            NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            notificationManager.cancel(0);
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
 
         if(this.musicService != null) {
             //Stops the music service.
