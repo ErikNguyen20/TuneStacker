@@ -93,12 +93,14 @@ public class SavedSongsFragment extends Fragment {
             @Override
             public void ButtonClicked(int viewType, int position) {
                 if(viewType != SongsRecyclerAdapter.ADD_ITEM_TOKEN) {
+                    //Launches Media Player
                     Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,savedSongs);
                     intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
                     startActivity(intent);
                 }
                 else {
+                    //Launches Add New popup.
                     Intent intent = new Intent(getActivity(), AddNewPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     startActivity(intent);
                 }

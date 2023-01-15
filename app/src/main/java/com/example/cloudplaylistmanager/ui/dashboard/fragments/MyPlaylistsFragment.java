@@ -57,6 +57,7 @@ public class MyPlaylistsFragment extends Fragment {
             @Override
             public void onClicked(int viewType, int position) {
                 if(viewType != PlaylistRecyclerAdapter.ADD_ITEM_TOKEN) {
+                    //Launches nested playlist view.
                     Intent intent = new Intent(getActivity(), PlaylistNestedActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,myPlaylists.get(position).second);
                     intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,myPlaylists.get(position).first);
@@ -90,6 +91,10 @@ public class MyPlaylistsFragment extends Fragment {
         return view;
     }
 
+    /**
+     * Launches popup dialog that allows the user to create a new nested playlist
+     * with a given name.
+     */
     public void ShowPlaylistDialog() {
         Dialog dialog = new Dialog(getContext());
         dialog.setContentView(R.layout.popup_text_input);

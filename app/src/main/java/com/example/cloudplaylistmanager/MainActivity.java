@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
         //Initializes the saved data for the application.
         DataManager.Initialize(getApplicationContext());
+        DataManager.getInstance().ConstructPlaylistFromLocalFiles();
 
         startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
     }
