@@ -4,7 +4,10 @@ import com.google.gson.annotations.Expose;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 
 /**
  * A class that represents a playlist object, containing all the necessary playlist
@@ -19,24 +22,28 @@ public class PlaylistInfo implements Serializable {
     @Expose
     private long lastViewed;
     @Expose
-    protected ArrayList<PlaybackAudioInfo> insertedVideos;
+    protected HashMap<String, PlaybackAudioInfo> insertedVideos; //String is the name of the audio
     @Expose
-    private ArrayList<String> importedPlaylistsKeys;
+    private HashSet<String> importedPlaylistsKeys;
+    @Expose
+    private HashMap<String, Integer> audioOrder; //String is name of audio, integer is the index.
 
-    private LinkedHashSet<PlaybackAudioInfo> allVideos;
+
+    private ArrayList<PlaybackAudioInfo> allVideos;
     private ArrayList<SerializablePair<String, PlaylistInfo>> importedPlaylists;
 
     /**
      * Instantiates a new PlaylistsInfo object.
      */
     public PlaylistInfo() {
-        this.insertedVideos = new ArrayList<>();
-        this.allVideos = new LinkedHashSet<>();
+        this.insertedVideos = new HashMap<>();
         this.importedPlaylists = new ArrayList<>();
-        this.importedPlaylistsKeys = new ArrayList<>();
+        this.importedPlaylistsKeys = new HashSet<>();
+        this.audioOrder = new HashMap<>();
         this.linkSource = null;
         this.lastViewed = 0;
         this.title = "Unnamed Playlist";
+        this.allVideos = new ArrayList<>();
     }
 
     /**
@@ -44,14 +51,30 @@ public class PlaylistInfo implements Serializable {
      * this playlist, and its children playlists.
      */
     public void UpdateAllVideos() {
-        if(this.allVideos == null) {
-            this.allVideos = new LinkedHashSet<>();
-        }
         this.allVideos.clear();
-        this.allVideos.addAll(this.insertedVideos);
+        this.allVideos.addAll(this.insertedVideos.values());
         for(SerializablePair<String, PlaylistInfo> pair : importedPlaylists) {
             this.allVideos.addAll(pair.second.getAllVideos());
         }
+        Collections.sort(this.allVideos, new Comparator<PlaybackAudioInfo>() {
+            @Override
+            public int compare(PlaybackAudioInfo audioLeft, PlaybackAudioInfo audioRight) {
+                Integer positionLeft = audioOrder.get(audioLeft.getTitle());
+                Integer positionRight = audioOrder.get(audioRight.getTitle());
+                if(positionLeft != null && positionRight != null) {
+                    return Integer.compare(positionLeft,positionRight);
+                }
+                else if(positionLeft != null) {
+                    return -1;
+                }
+                else if(positionRight != null) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            }
+        });
     }
 
     /**
@@ -105,7 +128,7 @@ public class PlaylistInfo implements Serializable {
      * Returns a list of all of the videos of this playlist, including the imported ones.
      * @return A list of all of the videos, including imports.
      */
-    public LinkedHashSet<PlaybackAudioInfo> getAllVideos() {
+    public ArrayList<PlaybackAudioInfo> getAllVideos() {
         return this.allVideos;
     }
 
@@ -113,7 +136,7 @@ public class PlaylistInfo implements Serializable {
      * Returns a list of all inserted videos. This list does not include imported playlists.
      * @return A list of inserted videos. Does not include imports.
      */
-    public ArrayList<PlaybackAudioInfo> getInsertedVideos() {
+    public HashMap<String, PlaybackAudioInfo> getInsertedVideos() {
         return this.insertedVideos;
     }
 
@@ -122,7 +145,7 @@ public class PlaylistInfo implements Serializable {
      * Returns a list of all of the import keys that are currently included in this playlist.
      * @return List of imported playlist keys
      */
-    public ArrayList<String> GetImportedPlaylistKeys() {
+    public HashSet<String> GetImportedPlaylistKeys() {
         return this.importedPlaylistsKeys;
     }
 
@@ -139,7 +162,7 @@ public class PlaylistInfo implements Serializable {
      * @return If the audio exists.
      */
     public boolean ContainsAudio(PlaybackAudioInfo audio) {
-        return this.insertedVideos.contains(audio);
+        return this.insertedVideos.containsKey(audio.getTitle());
     }
 
     /**
@@ -147,14 +170,9 @@ public class PlaylistInfo implements Serializable {
      * @return If the removal was successful.
      */
     public boolean RemoveAudio(String audioTitle) {
-        for(int index = 0; index < this.insertedVideos.size(); index++) {
-            if(audioTitle.equals(this.insertedVideos.get(index).getTitle())) {
-                this.insertedVideos.remove(index);
-                UpdateAllVideos();
-                return true;
-            }
-        }
-        return false;
+        PlaybackAudioInfo audio = this.insertedVideos.remove(audioTitle);
+        UpdateAllVideos();
+        return audio != null;
     }
 
     /**
@@ -162,7 +180,31 @@ public class PlaylistInfo implements Serializable {
      * @param audio Audio information.
      */
     public void AddAudioToPlaylist(PlaybackAudioInfo audio) {
-        this.insertedVideos.add(audio);
+        this.insertedVideos.put(audio.getTitle(),audio);
+        UpdateAllVideos();
+    }
+
+    /**
+     * Sets the audio items order in memory using an array of items.
+     * @param order Order in which items should be placed.
+     */
+    public HashMap<String, Integer> SetItemsOrder(ArrayList<PlaybackAudioInfo> order) {
+        if(order == null || order.isEmpty()) {
+            return null;
+        }
+        for(int index = 0; index < order.size(); index++) {
+            this.audioOrder.put(order.get(index).getTitle(),index);
+        }
+        UpdateAllVideos();
+        return this.audioOrder;
+    }
+
+    /**
+     * Sets the audio items order in memory using an already existing order map.
+     * @param order Order in which items should be placed.
+     */
+    public void SetItemsOrder(HashMap<String, Integer> order) {
+        this.audioOrder.putAll(order);
         UpdateAllVideos();
     }
 
@@ -202,6 +244,7 @@ public class PlaylistInfo implements Serializable {
      */
     public void RemoveImportedPlaylist(String key) {
         this.importedPlaylistsKeys.remove(key);
+        //Iterates through the list of imported playlists and finds a playlist with the matching key.
         for(int index = 0; index < this.importedPlaylists.size(); index++) {
             if(this.importedPlaylists.get(index).first.equals(key)) {
                 this.importedPlaylists.remove(index);

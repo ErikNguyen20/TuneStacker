@@ -43,6 +43,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -98,6 +99,7 @@ public class DataManager {
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
             this.bitmapCache = new HashMap<>();
 
+
             LoadImportedPlaylistsData();
             LoadNestedPlaylistsData();
 
@@ -109,8 +111,9 @@ public class DataManager {
             FFmpeg.getInstance().init(context);
             this.downloaderInitialized = true;
 
-        } catch(YoutubeDLException e) {
+        } catch(Exception e) {
             Log.e(LOG_TAG,(e.getMessage() != null) ?  e.getMessage() : "An Error has Occurred");
+            e.printStackTrace();
             this.downloaderInitialized = false;
         }
     }
@@ -161,6 +164,13 @@ public class DataManager {
 
         editor.putString(SAVED_PREFERENCES_IMPORT_TAG,jsonImportResult);
         editor.apply();
+    }
+
+    /**
+     * Saves all Settings data to {@link SharedPreferences}.
+     */
+    public void SaveSettingsData() {
+
     }
 
     /**
@@ -230,10 +240,10 @@ public class DataManager {
                 playlist.ClearImportedPlaylists();
 
                 //Re-adds the playlists into the nested playlists.
-                ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
-                for(int index = 0; index < playlistKeys.size(); index++) {
-                    if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
-                        playlist.ImportPlaylistWithoutUpdatingKeys(playlistKeys.get(index), this.importedPlaylistData.get(playlistKeys.get(index)));
+                HashSet<String> playlistKeys = playlist.GetImportedPlaylistKeys();
+                for(String entry : playlistKeys) {
+                    if(this.importedPlaylistData.containsKey(entry)) {
+                        playlist.ImportPlaylistWithoutUpdatingKeys(entry, this.importedPlaylistData.get(entry));
                     }
                 }
                 this.nestedPlaylistData.put(key,playlist);
@@ -247,10 +257,10 @@ public class DataManager {
                 playlist.ClearImportedPlaylists();
 
                 //Re-adds the playlists into the nested playlists.
-                ArrayList<String> playlistKeys = playlist.GetImportedPlaylistKeys();
-                for(int index = 0; index < playlistKeys.size(); index++) {
-                    if(this.importedPlaylistData.containsKey(playlistKeys.get(index))) {
-                        playlist.ImportPlaylistWithoutUpdatingKeys(playlistKeys.get(index), this.importedPlaylistData.get(playlistKeys.get(index)));
+                HashSet<String> playlistKeys = playlist.GetImportedPlaylistKeys();
+                for(String entryKey : playlistKeys) {
+                    if(this.importedPlaylistData.containsKey(entryKey)) {
+                        playlist.ImportPlaylistWithoutUpdatingKeys(entryKey, this.importedPlaylistData.get(entryKey));
                     }
                 }
                 otherPlaylistData.put(entry.getKey(), playlist);
@@ -289,6 +299,9 @@ public class DataManager {
      * @return Fetched playlist. Null if not found.
      */
     public PlaylistInfo GetPlaylistFromKey(String key) {
+        if(key == null || key.isEmpty()) {
+            return null;
+        }
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             return playlist;
@@ -338,6 +351,7 @@ public class DataManager {
             playlist.updateLastViewed();
             this.nestedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveNestedData();
             return;
         }
         playlist = this.importedPlaylistData.get(key);
@@ -345,6 +359,7 @@ public class DataManager {
             playlist.updateLastViewed();
             this.importedPlaylistData.put(key,playlist);
             this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveImportedData();
         }
     }
 
@@ -412,6 +427,29 @@ public class DataManager {
             return success;
         }
         return false;
+    }
+
+    /**
+     * Sets the loose ordering list of the specified playlist.
+     * @param key Key of the playlist that is to be modified from the database.
+     * @param order Order in which the items should be placed.
+     */
+    public void UpdateOrderOfItemsInPlaylist(String key, HashMap<String, Integer> order) {
+        PlaylistInfo playlist = this.nestedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.SetItemsOrder(order);
+            this.nestedPlaylistData.put(key, playlist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveNestedData();
+            return;
+        }
+        playlist = this.importedPlaylistData.get(key);
+        if(playlist != null) {
+            playlist.SetItemsOrder(order);
+            this.importedPlaylistData.put(key, playlist);
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            SaveImportedData();
+        }
     }
 
     /**
@@ -492,7 +530,6 @@ public class DataManager {
             this.nestedPlaylistData.put(key, playlist);
         }
         else {
-            this.importedPlaylistData.put(key, playlist);
             if(parentKey != null) {
                 PlaylistInfo parentPlaylist = this.nestedPlaylistData.get(parentKey);
                 if(parentPlaylist != null) {
@@ -500,6 +537,10 @@ public class DataManager {
                 }
                 this.nestedPlaylistData.put(parentKey,parentPlaylist);
             }
+            else {
+                playlist.SetItemsOrder(playlist.getAllVideos());
+            }
+            this.importedPlaylistData.put(key, playlist);
             SaveImportedData();
         }
         SaveNestedData();
@@ -544,7 +585,6 @@ public class DataManager {
                 try {
                     VideoInfo streamInfo = YoutubeDL.getInstance().getInfo(request);
                     audio.setTitle(ValidateFileName(streamInfo.getTitle()));
-                    audio.setAuthor(streamInfo.getUploader());
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
                     audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
@@ -649,8 +689,8 @@ public class DataManager {
      * @param downloadListener Listener used to get the results/errors of this call.
      */
     public void DownloadFileFromDirectoryToDirectory(Uri from, DownloadListener downloadListener) {
-        InputStream inputStream = null;
-        OutputStream outputStream = null;
+        InputStream inputStream;
+        OutputStream outputStream;
 
         //Gets file destination and checks to see if the file already exists.
         File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
@@ -729,7 +769,7 @@ public class DataManager {
             if(optionalDirectory != null) {
                 File nextDirectory = new File(this.exportDirectory, optionalDirectory);
                 if(!nextDirectory.exists()) {
-                    nextDirectory.mkdir();
+                    nextDirectory.mkdirs();
                 }
                 fileDestination = new File(nextDirectory, audioFile.getName());
             }
@@ -967,7 +1007,7 @@ public class DataManager {
         }
         File exportDirectory = new File(musicDirectory, EXPORT_DIRECTORY_NAME);
         if (!exportDirectory.exists()) {
-            exportDirectory.mkdir();
+            exportDirectory.mkdirs();
         }
         return exportDirectory;
     }

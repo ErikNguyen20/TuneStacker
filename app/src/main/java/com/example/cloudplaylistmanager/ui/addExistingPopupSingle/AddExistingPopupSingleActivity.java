@@ -46,6 +46,10 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
     private RecyclerView recyclerView;
     private SelectItemsRecyclerAdapter adapter;
 
+    /**
+     * OnCreate Method sets up the UI.
+     * @param savedInstanceState bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,6 +60,9 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         this.uuidParentKey = getIntent().getStringExtra(PARENT_UUID_TAG);
         if(this.uuidParentKey != null && this.uuidParentKey.isEmpty()) {
             this.uuidParentKey = null;
+            Toast.makeText(this,"Failed to get Parent Playlist's UUID.",Toast.LENGTH_SHORT).show();
+            this.finish();
+            return;
         }
         this.selectedItems = new HashSet<>();
 
@@ -63,24 +70,36 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         this.confirmButton = findViewById(R.id.textView_confirm_button);
 
 
-
         if(this.isPlaylist) {
+            //Sets up the UI view for adding playlists.
             this.recyclerView = findViewById(R.id.recyclerView);
 
+            //Fetches and populates playlist data.
             ArrayList<Pair<String, PlaylistInfo>> fetchedPlaylist = DataManager.getInstance().GetImportedPlaylists();
             this.importedPlaylistData = new HashMap<>();
             if(fetchedPlaylist != null) {
+                //Constructs a hashset for the existing audios that are already in the playlist.
+                PlaylistInfo currentPlaylist = DataManager.getInstance().GetPlaylistFromKey(this.uuidParentKey);
+                HashSet<String> existingKeys = new HashSet<>();
+                if(currentPlaylist != null) {
+                    existingKeys = currentPlaylist.GetImportedPlaylistKeys();
+                }
                 for(Pair<String, PlaylistInfo> item : fetchedPlaylist) {
-                    this.importedPlaylistData.put(item.first, item.second);
+                    //If the playlist has already been imported into the nested playlist, do not add it.
+                    if(!existingKeys.contains(item.first)) {
+                        this.importedPlaylistData.put(item.first, item.second);
+                    }
                 }
             }
 
+            //Sets the recycler view/adapter
             this.recyclerView.setHasFixedSize(true);
             this.recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
             this.adapter = new SelectItemsRecyclerAdapter(this, true, null, new RecyclerViewSelectItemsListener() {
                 @Override
                 public void ButtonClicked(String uuid) {
+                    //Keeps track of the selection state of each item in the recycler view.
                     if(!selectedItems.contains(uuid)) {
                         selectedItems.add(uuid);
                     }
@@ -97,6 +116,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
 
                 @Override
                 public Pair<PlaylistInfo, Boolean> FetchPlaylistInformation(String uuid) {
+                    //Fetches the playlist information that is mapped to the uuid.
                     if(uuid == null || uuid.isEmpty() || importedPlaylistData.get(uuid) == null) {
                         return null;
                     }
@@ -106,22 +126,35 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
             this.recyclerView.setAdapter(this.adapter);
 
         } else {
+            //Sets up the UI view for adding audios.
             this.recyclerView = findViewById(R.id.recyclerView);
 
             PlaylistInfo fetchedAudio = DataManager.getInstance().ConstructPlaylistFromLocalFiles();
             this.savedSongsData = new HashMap<>();
             if(fetchedAudio != null) {
+                //Constructs a hashset for the existing audios that are already in the playlist.
+                PlaylistInfo currentPlaylist = DataManager.getInstance().GetPlaylistFromKey(this.uuidParentKey);
+                HashSet<String> existingAudios = new HashSet<>();
+                for(PlaybackAudioInfo audio : currentPlaylist.getAllVideos()) {
+                    existingAudios.add(audio.getTitle());
+                }
+
                 for(PlaybackAudioInfo audio : fetchedAudio.getAllVideos()) {
-                    this.savedSongsData.put(UUID.randomUUID().toString(),audio);
+                    //If the playlist has already been imported into the nested playlist, do not add it.
+                    if(!existingAudios.contains(audio.getTitle())) {
+                        this.savedSongsData.put(UUID.randomUUID().toString(),audio);
+                    }
                 }
             }
 
+            //Sets the recycler view/adapter
             this.recyclerView.setHasFixedSize(true);
             this.recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
             this.adapter = new SelectItemsRecyclerAdapter(this, false, null, new RecyclerViewSelectItemsListener() {
                 @Override
                 public void ButtonClicked(String uuid) {
+                    //Keeps track of the selection state of each item in the recycler view.
                     if(!selectedItems.contains(uuid)) {
                         selectedItems.add(uuid);
                     }
@@ -133,6 +166,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
 
                 @Override
                 public Pair<PlaybackAudioInfo, Boolean> FetchAudioInformation(String uuid) {
+                    //Fetches the audio information that is mapped to the uuid.
                     if(uuid == null || uuid.isEmpty() || savedSongsData.get(uuid) == null) {
                         return null;
                     }
@@ -147,6 +181,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
             this.recyclerView.setAdapter(this.adapter);
         }
 
+        //Sets the click listener for the confirm button.
         this.confirmButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -154,6 +189,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
             }
         });
 
+        //Sets the search query listener.
         this.searchEdit.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
             public boolean onQueryTextSubmit(String s) {
@@ -183,6 +219,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
             return;
         }
         if(this.isPlaylist) {
+            //Adds the selected playlist items into the nested playlist.
             for(String item : this.selectedItems) {
                 if(this.importedPlaylistData.containsKey(item)) {
                     boolean success = DataManager.getInstance().AddImportPlaylistToNested(this.uuidParentKey, item);
@@ -194,6 +231,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
                 }
             }
         } else {
+            //Adds the selected audio items into the nested playlist.
             for(String item : this.selectedItems) {
                 if(this.savedSongsData.containsKey(item)) {
                     boolean success = DataManager.getInstance().AddSongToPlaylist(this.uuidParentKey,this.savedSongsData.get(item));
@@ -220,6 +258,7 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         ArrayList<String> ids = new ArrayList<>();
 
         if(query.isEmpty()) {
+            //If the query is empty, display every item.
             if(this.isPlaylist) {
                 ids.addAll(this.importedPlaylistData.keySet());
             } else {
@@ -228,12 +267,14 @@ public class AddExistingPopupSingleActivity extends AppCompatActivity {
         }
         else {
             if (this.isPlaylist) {
+                //Display queried playlist items.
                 for (Map.Entry<String, PlaylistInfo> entry : this.importedPlaylistData.entrySet()) {
                     if (entry.getValue().getTitle().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
                         ids.add(entry.getKey());
                     }
                 }
             } else {
+                //Display queried audio items.
                 for (Map.Entry<String, PlaybackAudioInfo> entry : this.savedSongsData.entrySet()) {
                     if (entry.getValue().getTitle().toLowerCase(Locale.ROOT).contains(query.toLowerCase(Locale.ROOT))) {
                         ids.add(entry.getKey());

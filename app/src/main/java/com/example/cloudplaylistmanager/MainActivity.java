@@ -52,8 +52,6 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
-        DataManager.getInstance().SaveImportedData();
-        DataManager.getInstance().SaveNestedData();
         super.onStop();
     }
 

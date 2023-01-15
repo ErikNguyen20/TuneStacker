@@ -19,6 +19,7 @@ import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
+import java.util.Collections;
 
 /**
  * A Recycler View Adapter that displays Audio Items with an ellipsis for menu options.
@@ -137,6 +138,26 @@ public class SongsOptionsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVi
         this.audios.clear();
         this.audios.addAll(playlist.getAllVideos());
         notifyDataSetChanged();
+    }
+
+    /**
+     * Returns the list of audio items in the recycler view.
+     * @return List of audio items.
+     */
+    public ArrayList<PlaybackAudioInfo> getAudios() {
+        return this.audios;
+    }
+
+    /**
+     * Swaps an item in the recycler view.
+     * @param fromPosition Original position of the item.
+     * @param toPosition New position of the item.
+     */
+    public void swapDataPoints(int fromPosition, int toPosition) {
+        Collections.swap(this.audios,
+                (this.addButtonIncluded ? fromPosition - 1 : fromPosition) % this.audios.size(),
+                (this.addButtonIncluded ? toPosition - 1 : toPosition) % this.audios.size());
+        notifyItemMoved(fromPosition, toPosition);
     }
 
     /**

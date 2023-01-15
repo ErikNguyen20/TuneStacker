@@ -23,8 +23,6 @@ public class PlaybackAudioInfo implements Serializable {
     @Expose
     private String title;
     @Expose
-    private String author;
-    @Expose
     private String origin;
     @Expose
     private PlaybackMediaType audioType;
@@ -40,7 +38,6 @@ public class PlaybackAudioInfo implements Serializable {
      * Instantiates a new PlaybackAudioInfo object.
      */
     public PlaybackAudioInfo() {
-        this.author = null;
         this.origin = null;
         this.title = DEFAULT_TITLE;
         this.audioType = PlaybackMediaType.UNKNOWN;
@@ -63,22 +60,6 @@ public class PlaybackAudioInfo implements Serializable {
      */
     public void setTitle(String title) {
         this.title = title;
-    }
-
-    /**
-     * Returns the author of the audio.
-     * @return Author of the audio.
-     */
-    public String getAuthor() {
-        return this.author;
-    }
-
-    /**
-     * Sets the author of the audio.
-     * @param author Author of the audio.
-     */
-    public void setAuthor(String author) {
-        this.author = author;
     }
 
     /**

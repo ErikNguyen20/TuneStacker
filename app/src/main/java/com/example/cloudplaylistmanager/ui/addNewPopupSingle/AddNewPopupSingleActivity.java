@@ -1,7 +1,5 @@
 package com.example.cloudplaylistmanager.ui.addNewPopupSingle;
 
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -52,54 +50,22 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
     private static final String PROGRESS_DIALOG_HIDE_KEY = "hide_dialog_key";
     private static final String PROGRESS_DIALOG_UPDATE_KEY = "update_dialog_key";
 
-    //Activity Result callback used for retrieving the selected file from the user.
-    private final MutableLiveData<Uri> selectedFile = new MutableLiveData<>();
-    private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            new ActivityResultCallback<ActivityResult>() {
-                @Override
-                public void onActivityResult(ActivityResult result) {
-                    if(result.getResultCode() == Activity.RESULT_OK) {
-                        Intent resultIntent = result.getData();
-                        if(resultIntent != null) {
-                            Uri uri = resultIntent.getData();
-                            selectedFile.setValue(uri);
-                        }
-                    }
-                }
-            });
-    //Handler that handles toast and progress dialog messages.
-    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
-                Toast.makeText(getApplicationContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
-            }
-            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
-                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
-            }
-            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
-                progressDialog.show();
-            }
-            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
-                progressDialog.hide();
-            }
-        }
-    };
-
     private TextView downloadButton;
     private TextView chooseButton;
     private TextView fileName;
     private EditText urlField;
     private ProgressDialog progressDialog;
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
 
     private String uuidParentKey;
     private boolean isPlaylist;
 
-    private PowerManager.WakeLock wakeLock;
-    private WifiManager.WifiLock wifiLock;
 
-
+    /**
+     * OnCreate Method sets up the UI.
+     * @param savedInstanceState bundle
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -117,10 +83,11 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             this.fileName = findViewById(R.id.textView_file_name);
             this.urlField = findViewById(R.id.edit_text_url);
 
-
+            //Sets the click listener for the choose button, which opens the file explorer.
             this.chooseButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
+                    //Launches intent to open the file explorer.
                     Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                     intent.setType("audio/*");
                     intent = Intent.createChooser(intent, "Choose an Audio File");
@@ -128,10 +95,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                     activityResultLauncher.launch(intent);
                 }
             });
+            //Sets the click listener for the download button.
             this.downloadButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     if(GetConnectivityStatus() == ConnectivityManager.TYPE_MOBILE) {
+                        //If the device is using mobile data, then prompt the user with a popup.
                         Dialog dialog = new Dialog(getApplicationContext());
                         dialog.setContentView(R.layout.popup_confirm_button);
 
@@ -139,6 +108,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                         continueButton.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
+                                //Downloads the audio.
                                 dialog.dismiss();
                                 DownloadAudio();
                             }
@@ -147,17 +117,19 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                         dialog.show();
                     }
                     else {
+                        //Downloads the audio.
                         DownloadAudio();
                     }
                 }
             });
 
+            //Listens for the Uri change, which is triggered by the activitylauncher callback.
             getUriResult().observe(this, new Observer<Uri>() {
                 public void onChanged(Uri uri) {
                     if(uri == null) {
                         return;
                     }
-
+                    //Sets the UI display that shows the user the file name.
                     String uriName = DataManager.getInstance().GetFileNameFromUri(uri);
                     uriName = uriName == null ? uri.getLastPathSegment() : uriName;
                     fileName.setText(uriName);
@@ -171,10 +143,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             this.downloadButton = findViewById(R.id.textView_download_button);
             this.urlField = findViewById(R.id.edit_text_url);
 
+            //Sets the click listener for the download button.
             this.downloadButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
                     if(GetConnectivityStatus() == ConnectivityManager.TYPE_MOBILE) {
+                        //If the device is using mobile data, then prompt the user with a popup.
                         Dialog dialog = new Dialog(getApplicationContext());
                         dialog.setContentView(R.layout.popup_confirm_button);
 
@@ -182,6 +156,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                         continueButton.setOnClickListener(new View.OnClickListener() {
                             @Override
                             public void onClick(View view) {
+                                //Downloads the playlist.
                                 dialog.dismiss();
                                 DownloadPlaylist();
                             }
@@ -190,12 +165,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                         dialog.show();
                     }
                     else {
+                        //Downloads the playlist.
                         DownloadPlaylist();
                     }
                 }
             });
         }
-
 
         setFinishOnTouchOutside(true);
 
@@ -220,6 +195,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             return;
         }
 
+        //Starts wake and wifi locks.
         StartProgressDialog("Preparing for download...");
         if(this.wakeLock != null && !this.wakeLock.isHeld()) {
             this.wakeLock.acquire(120*60*1000L /*120 minutes*/);
@@ -227,9 +203,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         if(this.wifiLock != null && !this.wifiLock.isHeld()) {
             this.wifiLock.acquire();
         }
+
+        //Downloads playlist using the PlatformCompactUtility.
         PlatformCompatUtility.DownloadPlaylist(urlInput, new DownloadPlaylistListener() {
             @Override
             public void onComplete(PlaylistInfo playlist) {
+                //When the playlist is successfully downloaded, add the playlist to DataManager.
                 if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
                     DataManager.getInstance().CreateNewPlaylist(playlist,false,uuidParentKey);
                 }
@@ -249,6 +228,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             @Override
             public void onError(int attempt, String error) {
                 if(attempt == -1) {
+                    //If there is a critical error, display the error and stop the download.
                     HideProgressDialog();
                     SendToast(error);
                     ReleaseLocks();
@@ -270,10 +250,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         String urlInput = this.urlField.getText().toString();
 
         if(uri != null) {
+            //Transfers the selected file from the file system into the application.
             StartProgressDialog("Preparing for download...");
             DataManager.getInstance().DownloadFileFromDirectoryToDirectory(uri, new DownloadListener() {
                 @Override
                 public void onComplete(PlaybackAudioInfo audio) {
+                    //When the audio is successfully downloaded, add the audio to DataManager.
                     if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
                         DataManager.getInstance().AddSongToPlaylist(uuidParentKey,audio);
                     }
@@ -287,6 +269,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
 
                 @Override
                 public void onError(int attempt, String error) {
+                    //If there is an error, display the error and stop the transfer.
                     HideProgressDialog();
                     SendToast(error);
                     ReleaseLocks();
@@ -294,6 +277,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             });
         }
         else if(!urlInput.isEmpty()){
+            //Starts wake and wifi locks.
             StartProgressDialog("Preparing for download...");
             if(this.wakeLock != null && !this.wakeLock.isHeld()) {
                 this.wakeLock.acquire(5*60*1000L /*5 minutes*/);
@@ -301,9 +285,12 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             if(this.wifiLock != null && !this.wifiLock.isHeld()) {
                 this.wifiLock.acquire();
             }
+
+            //Downloads audio using the PlatformCompactUtility.
             PlatformCompatUtility.DownloadSong(urlInput, new DownloadListener() {
                 @Override
                 public void onComplete(PlaybackAudioInfo audio) {
+                    //When the audio is successfully downloaded, add the audio to DataManager.
                     if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
                         DataManager.getInstance().AddSongToPlaylist(uuidParentKey,audio);
                     }
@@ -320,6 +307,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                 @Override
                 public void onError(int attempt, String error) {
                     if(attempt == -1) {
+                        //If there is a critical error, display the error and stop the download.
                         HideProgressDialog();
                         SendToast(error);
                         ReleaseLocks();
@@ -335,6 +323,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         }
     }
 
+
     /**
      * Gets the connectivity status of the application.
      * @return Connectivity Code. {@link ConnectivityManager}
@@ -348,10 +337,18 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         return -1;
     }
 
+    /**
+     * Returns the Uri result from the file selection activity launcher.
+     * @return Uri results from the activitylauncher.
+     */
     private LiveData<Uri> getUriResult() {
         return this.selectedFile;
     }
 
+    /**
+     * Sends a toast message using the handler.
+     * @param message String message that will be sent.
+     */
     public void SendToast(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -360,6 +357,10 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Starts a progress dialog with an initial message.
+     * @param message String message that will be sent.
+     */
     public void StartProgressDialog(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -369,6 +370,10 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Updates the progress dialog with a message.
+     * @param message String message that will be sent.
+     */
     public void UpdateProgressDialog(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -377,6 +382,9 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Hides the progress dialog.
+     */
     public void HideProgressDialog() {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -385,6 +393,9 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Release both the wake lock and wifi lock.
+     */
     public void ReleaseLocks() {
         if(this.wakeLock != null && this.wakeLock.isHeld()) {
             this.wakeLock.release();
@@ -402,4 +413,37 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         }
         super.onDestroy();
     }
+
+    //Activity Result callback used for retrieving the selected file from the user.
+    private final MutableLiveData<Uri> selectedFile = new MutableLiveData<>();
+    private final ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if(result.getResultCode() == Activity.RESULT_OK) {
+                    Intent resultIntent = result.getData();
+                    if(resultIntent != null) {
+                        Uri uri = resultIntent.getData();
+                        selectedFile.setValue(uri);
+                    }
+                }
+            });
+
+    //Handler that handles toast and progress dialog messages.
+    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
+                Toast.makeText(getApplicationContext(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
+            }
+            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
+                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
+                progressDialog.show();
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
+                progressDialog.hide();
+            }
+        }
+    };
 }

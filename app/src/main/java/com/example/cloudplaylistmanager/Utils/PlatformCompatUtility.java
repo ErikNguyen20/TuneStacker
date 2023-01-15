@@ -5,6 +5,7 @@ import android.util.Log;
 import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.CountDownLatch;
 
@@ -77,11 +78,13 @@ public class PlatformCompatUtility {
                 updatedPlaylist.setTitle(fetchedPlaylist.getTitle());
                 updatedPlaylist.setLinkSource(fetchedPlaylist.getLinkSource());
 
-                ArrayList<PlaybackAudioInfo> audios = fetchedPlaylist.getInsertedVideos();
+                HashMap<String, PlaybackAudioInfo> audios = fetchedPlaylist.getInsertedVideos();
                 //Iterates through each audio item in the playlist and downloads it.
-                for(int index = 0; index < audios.size(); index++) {
+                int index = 0;
+                for(PlaybackAudioInfo entry : audios.values()) {
+                    index++;
 
-                    String songOrigin = audios.get(index).getOrigin();
+                    String songOrigin = entry.getOrigin();
                     final CountDownLatch latch = new CountDownLatch(1);
                     final PlaybackAudioInfo[] fetchedAudio = new PlaybackAudioInfo[1];
                     final boolean[] fetchedAudioModified = new boolean[1];
@@ -119,7 +122,7 @@ public class PlatformCompatUtility {
 
                     if(fetchedAudioModified[0]) {
                         updatedPlaylist.AddAudioToPlaylist(fetchedAudio[0]);
-                        downloadListener.onProgressUpdate("[" + (index + 1) + "/" + audios.size() +
+                        downloadListener.onProgressUpdate("[" + index + "/" + audios.size() +
                                 "] Downloaded: " + fetchedAudio[0].getTitle());
                     }
                     else {
@@ -226,7 +229,7 @@ public class PlatformCompatUtility {
      * @param importedKeys ArrayList of Keys of the imported playlists.
      * @param playlistListener Listener used to get the results/errors of this call.
      */
-    public static void SyncPlaylistsMultiple(ArrayList<String> importedKeys, SyncPlaylistListener playlistListener) {
+    public static void SyncPlaylistsMultiple(HashSet<String> importedKeys, SyncPlaylistListener playlistListener) {
         if(importedKeys == null || importedKeys.isEmpty()) {
             playlistListener.onComplete();
             return;

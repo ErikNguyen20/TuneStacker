@@ -48,7 +48,7 @@ public class YoutubeUtilities {
         ArrayList<PlaybackAudioInfo> newSongs = new ArrayList<>();
         HashSet<String> origin = new HashSet<>();
 
-        for(PlaybackAudioInfo audio : localPlaylist.getInsertedVideos()) {
+        for(PlaybackAudioInfo audio : localPlaylist.getInsertedVideos().values()) {
             origin.add(audio.getOrigin());
         }
         for(PlaybackAudioInfo audio : fetchedPlaylist.getAllVideos()) {
@@ -193,12 +193,7 @@ public class YoutubeUtilities {
                     video.setThumbnailSource(item.getJSONObject("thumbnails").getJSONObject("medium").getString("url"));
                     video.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
                 }
-                if(item.has("videoOwnerChannelTitle")) {
-                    video.setAuthor(item.getString("videoOwnerChannelTitle"));
-                }
-                else {
-                    video.setTitle("Private");
-                    video.setAuthor("Private");
+                if(!item.has("videoOwnerChannelTitle")) {
                     continue;
                 }
 
@@ -278,7 +273,7 @@ public class YoutubeUtilities {
         }
 
         public void MergePlaylists(YoutubePlaylistInfo other) {
-            this.insertedVideos.addAll(other.insertedVideos);
+            this.insertedVideos.putAll(other.insertedVideos);
             UpdateAllVideos();
             this.nextPageToken = other.nextPageToken;
         }

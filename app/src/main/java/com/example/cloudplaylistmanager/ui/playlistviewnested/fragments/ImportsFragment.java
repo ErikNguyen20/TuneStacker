@@ -45,27 +45,6 @@ public class ImportsFragment extends Fragment {
     private static final String PROGRESS_DIALOG_HIDE_KEY = "hide_dialog_key";
     private static final String PROGRESS_DIALOG_UPDATE_KEY = "update_dialog_key";
 
-    //Handler that handles toast and progress dialog messages.
-    private ProgressDialog progressDialog;
-    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
-        @Override
-        public void handleMessage(@NonNull Message msg) {
-            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
-                Toast.makeText(getActivity(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
-            }
-            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
-                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
-            }
-            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
-                progressDialog.show();
-            }
-            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
-                progressDialog.hide();
-            }
-        }
-    };
-
-
     private PlaylistNestedViewModel viewModel;
 
     private ArrayList<SerializablePair<String, PlaylistInfo>> playlists;
@@ -82,15 +61,18 @@ public class ImportsFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_imports, container, false);
 
+
         //Instantiates new Recycler View and sets the adapter.
         RecyclerView recyclerView = view.findViewById(R.id.recyclerView_imports);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
+
         this.adapter = new PlaylistOptionsRecyclerAdapter(getContext(), null, new RecyclerViewOptionsListener() {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
+                    //Exports the selected playlist.
                     StartProgressDialog("Exporting Playlist...");
                     DataManager.getInstance().ExportPlaylist(playlists.get(position).first, new ExportListener() {
                         @Override
@@ -105,6 +87,7 @@ public class ImportsFragment extends Fragment {
                         }
                     });
                 } else if(itemId == R.id.delete_option) {
+                    //Deletes the selected playlist from the nested playlist.
                     boolean success = DataManager.getInstance().RemovePlaylist(playlists.get(position).first, parentUuidKey);
                     if(success) {
                         viewModel.updateData(parentUuidKey);
@@ -114,10 +97,12 @@ public class ImportsFragment extends Fragment {
                         Toast.makeText(getActivity(),"Failed to Remove Playlist.",Toast.LENGTH_SHORT).show();
                     }
                 } else if(itemId == R.id.sync_option) {
+                    //Syncs the selected playlist.
                     StartProgressDialog("Syncing Playlist...");
                     PlatformCompatUtility.SyncPlaylist(playlists.get(position).first, new SyncPlaylistListener() {
                         @Override
                         public void onComplete() {
+                            //Updates the UI after a successful sync.
                             viewModel.updateData(playlists.get(position).first);
                             SendToast("Successfully Synced Playlist.");
                             HideProgressDialog();
@@ -131,6 +116,7 @@ public class ImportsFragment extends Fragment {
                         @Override
                         public void onError(int code, String message) {
                             if(code == -1) {
+                                //Notifies the user that a critical error has occurred.
                                 SendToast(message);
                                 HideProgressDialog();
                             }
@@ -145,12 +131,14 @@ public class ImportsFragment extends Fragment {
             @Override
             public void ButtonClicked(int viewType, int position) {
                 if(viewType != PlaylistOptionsRecyclerAdapter.ADD_ITEM_TOKEN) {
+                    //Launches the import view activity.
                     Intent intent = new Intent(getActivity(), PlaylistImportActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,playlists.get(position).second);
                     intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,playlists.get(position).first);
                     startActivity(intent);
                 }
                 else {
+                    //Opens popup to add an existing playlist.
                     Intent intent = new Intent(getActivity(), AddExistingPopupSingleActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
                     intent.putExtra(AddExistingPopupSingleActivity.IS_PLAYLIST_TAG,true);
                     intent.putExtra(AddExistingPopupSingleActivity.PARENT_UUID_TAG,parentUuidKey);
@@ -171,6 +159,7 @@ public class ImportsFragment extends Fragment {
                 playlists = stringPlaylistInfoPair.second.GetImportedPlaylists();
                 parentUuidKey = stringPlaylistInfoPair.first;
 
+                //Sets up data for the adapter.
                 ArrayList<PlaylistInfo> data = new ArrayList<>();
                 for(SerializablePair<String, PlaylistInfo> value : stringPlaylistInfoPair.second.GetImportedPlaylists()) {
                     data.add(value.second);
@@ -179,7 +168,7 @@ public class ImportsFragment extends Fragment {
             }
         });
 
-
+        //Creates the progress dialog.
         this.progressDialog = new ProgressDialog(getActivity());
         this.progressDialog.setTitle("Syncing Playlist");
         this.progressDialog.setCanceledOnTouchOutside(false);
@@ -195,6 +184,10 @@ public class ImportsFragment extends Fragment {
         super.onDestroy();
     }
 
+    /**
+     * Sends a toast message using the handler.
+     * @param message String message that will be sent.
+     */
     public void SendToast(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -203,6 +196,10 @@ public class ImportsFragment extends Fragment {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Starts a progress dialog with an initial message.
+     * @param message String message that will be sent.
+     */
     public void StartProgressDialog(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -212,6 +209,10 @@ public class ImportsFragment extends Fragment {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Updates the progress dialog with a message.
+     * @param message String message that will be sent.
+     */
     public void UpdateProgressDialog(String message) {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -220,6 +221,9 @@ public class ImportsFragment extends Fragment {
         this.toastHandler.sendMessage(msg);
     }
 
+    /**
+     * Hides the progress dialog.
+     */
     public void HideProgressDialog() {
         Message msg = this.toastHandler.obtainMessage();
         Bundle bundle = new Bundle();
@@ -227,4 +231,24 @@ public class ImportsFragment extends Fragment {
         msg.setData(bundle);
         this.toastHandler.sendMessage(msg);
     }
+
+    //Handler that handles toast and progress dialog messages.
+    private ProgressDialog progressDialog;
+    private final Handler toastHandler = new Handler(Looper.getMainLooper()) {
+        @Override
+        public void handleMessage(@NonNull Message msg) {
+            if(msg.getData().getString(TOAST_KEY) != null && !msg.getData().getString(TOAST_KEY).isEmpty()) {
+                Toast.makeText(getActivity(),msg.getData().getString(TOAST_KEY),Toast.LENGTH_LONG).show();
+            }
+            if(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY) != null && !msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY).isEmpty()) {
+                progressDialog.setMessage(msg.getData().getString(PROGRESS_DIALOG_UPDATE_KEY));
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_SHOW_KEY)) {
+                progressDialog.show();
+            }
+            if(msg.getData().getBoolean(PROGRESS_DIALOG_HIDE_KEY)) {
+                progressDialog.hide();
+            }
+        }
+    };
 }
