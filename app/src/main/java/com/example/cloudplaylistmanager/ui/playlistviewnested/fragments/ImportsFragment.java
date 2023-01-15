@@ -172,6 +172,7 @@ public class ImportsFragment extends Fragment {
         this.progressDialog = new ProgressDialog(getActivity());
         this.progressDialog.setTitle("Syncing Playlist");
         this.progressDialog.setCanceledOnTouchOutside(false);
+        this.progressDialog.setCancelable(false);
 
         return view;
     }

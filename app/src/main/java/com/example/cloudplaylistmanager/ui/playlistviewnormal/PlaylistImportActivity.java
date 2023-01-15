@@ -193,6 +193,7 @@ public class PlaylistImportActivity extends AppCompatActivity {
         this.progressDialog = new ProgressDialog(this);
         this.progressDialog.setTitle("Syncing Playlist");
         this.progressDialog.setCanceledOnTouchOutside(false);
+        this.progressDialog.setCancelable(false);
     }
 
     //Handles dragging of items in the recycler view.

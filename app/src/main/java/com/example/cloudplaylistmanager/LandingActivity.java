@@ -40,4 +40,8 @@ public class LandingActivity extends AppCompatActivity {
         NavigationUI.setupWithNavController(binding.navView, navController);
     }
 
+    @Override
+    public void onBackPressed() {
+        //Do nothing.
+    }
 }

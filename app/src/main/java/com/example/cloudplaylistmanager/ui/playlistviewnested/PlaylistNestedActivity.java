@@ -169,6 +169,7 @@ public class PlaylistNestedActivity extends AppCompatActivity {
         this.progressDialog = new ProgressDialog(this);
         this.progressDialog.setTitle("Syncing");
         this.progressDialog.setCanceledOnTouchOutside(false);
+        this.progressDialog.setCancelable(false);
     }
 
     /**

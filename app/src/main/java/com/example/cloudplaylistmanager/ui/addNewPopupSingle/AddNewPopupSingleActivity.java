@@ -182,6 +182,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         this.progressDialog = new ProgressDialog(this);
         this.progressDialog.setTitle("Downloading");
         this.progressDialog.setCanceledOnTouchOutside(false);
+        this.progressDialog.setCancelable(false);
     }
 
 

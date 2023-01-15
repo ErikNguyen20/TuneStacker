@@ -645,6 +645,8 @@ public class DataManager {
                         } else if(e.getMessage().contains("Video unavailable")) {
                             downloadFromUrlListener.onError(-1,"Video is unavailable.");
                             return;
+                        } else if(e.getMessage().contains("Private video")) {
+                            downloadFromUrlListener.onError(-1,"Video is Private.");
                         }
                     }
                     downloadFromUrlListener.onError(videoInfoFetchAttemptNumber,"Failed to Fetch Video Information.");
