@@ -1,7 +1,7 @@
 # TuneStacker 🎶
 A Java Android Music Downloader and Player Application.
 
-*This project was made as a personal project of mine.*
+*This app was made as a personal project of mine.*
 
 <br/>
 
