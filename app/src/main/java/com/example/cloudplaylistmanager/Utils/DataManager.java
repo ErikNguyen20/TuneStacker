@@ -791,7 +791,7 @@ public class DataManager {
             if(playlist != null) {
                 //Iterates through all of the audios in the playlist and exports each one.
                 for(PlaybackAudioInfo audio : playlist.getAllVideos()) {
-                    ExportSong(audio.getTitle(), playlist.getTitle());
+                    ExportSong(audio.getTitle(), ValidateFileName(playlist.getTitle()));
                     exportListener.onProgress("Exporting: " + audio.getTitle());
                 }
                 exportListener.onComplete("Successfully Exported Playlist.");
@@ -1178,9 +1178,6 @@ public class DataManager {
      */
     public static String ValidateFileName(String fileName) {
         String valid = fileName.trim(); //Remotes leading and ending spaces.
-        if(valid.isEmpty()) {
-            return "Unnamed";
-        }
 
         //Remove all control characters + DELETE(U+007F)
         valid = valid.replaceAll("[\\x{0000}-\\x{001F}\\x{007F}]","");

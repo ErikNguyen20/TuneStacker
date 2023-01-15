@@ -3,6 +3,7 @@ package com.example.cloudplaylistmanager.Platforms;
 import android.util.Log;
 
 
+import com.example.cloudplaylistmanager.BuildConfig;
 import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.FetchPlaylistListener;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
@@ -24,7 +25,7 @@ import java.util.regex.Pattern;
  */
 public class YoutubeUtilities {
     private static final String LOG_TAG = "YoutubeUtilities";
-    private static final String API_KEY = "AIzaSyDRtock8Du8PQSV4h0oVYMJHvwsI233TJg"; //Comes from "https://console.cloud.google.com/"
+    private static final String API_KEY = BuildConfig.YT_API_KEY; //Comes from "https://console.cloud.google.com/"
     private static final int MAX_RESULTS = 50;
 
     private static final String VID_EXTRACT_PATTERN = "/^.*((youtu.be\\/)|(v\\/)|(\\/u\\/\\w\\/)|(embed\\/)|(watch\\?))\\??v?=?([^#\\&\\?]*).*/";

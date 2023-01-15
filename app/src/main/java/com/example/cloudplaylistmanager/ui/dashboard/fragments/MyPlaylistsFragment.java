@@ -105,7 +105,7 @@ public class MyPlaylistsFragment extends Fragment {
             @Override
             public void onClick(View view) {
                 String inputName = name.getText().toString().trim();
-                if(!inputName.isEmpty()) {
+                if(!DataManager.ValidateFileName(inputName).isEmpty()) {
                     PlaylistInfo newPlaylist = new PlaylistInfo();
                     newPlaylist.setTitle(inputName);
 
@@ -120,6 +120,9 @@ public class MyPlaylistsFragment extends Fragment {
                     intent.putExtra(PlaylistNestedActivity.SERIALIZE_TAG,newPlaylist);
                     intent.putExtra(PlaylistNestedActivity.UUID_KEY_TAG,key);
                     startActivity(intent);
+                }
+                else {
+                    Toast.makeText(getContext(),"Invalid Playlist Name.",Toast.LENGTH_SHORT).show();
                 }
             }
         });

@@ -47,15 +47,32 @@ public class PlaylistInfo implements Serializable {
     }
 
     /**
-     * Updates and populates the allVideos LinkedHashSet with videos that were inserted into
+     * Updates and populates the allVideos list with videos that were inserted into
      * this playlist, and its children playlists.
      */
     public void UpdateAllVideos() {
+        HashSet<String> existing = new HashSet<>();
+
+        //Adds all unique audio entries from insertedVideos into allVideos.
         this.allVideos.clear();
-        this.allVideos.addAll(this.insertedVideos.values());
-        for(SerializablePair<String, PlaylistInfo> pair : importedPlaylists) {
-            this.allVideos.addAll(pair.second.getAllVideos());
+        for(PlaybackAudioInfo audio : this.insertedVideos.values()) {
+            if(!existing.contains(audio.getTitle())) {
+                existing.add(audio.getTitle());
+                this.allVideos.add(audio);
+            }
         }
+
+        //Adds all unique audio entries from each imported playlist into allVideos.
+        for(SerializablePair<String, PlaylistInfo> pair : importedPlaylists) {
+            for(PlaybackAudioInfo audio : pair.second.getAllVideos()) {
+                if(!existing.contains(audio.getTitle())) {
+                    existing.add(audio.getTitle());
+                    this.allVideos.add(audio);
+                }
+            }
+        }
+
+        //Sorts the entries.
         Collections.sort(this.allVideos, new Comparator<PlaybackAudioInfo>() {
             @Override
             public int compare(PlaybackAudioInfo audioLeft, PlaybackAudioInfo audioRight) {

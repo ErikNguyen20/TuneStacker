@@ -17,6 +17,11 @@ android {
         ndk {
             abiFilters 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
         }
+
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("local.properties").newDataInputStream())
+
+        buildConfigField "String", "YT_API_KEY", "\"${properties.getProperty("YT_API_KEY")}\""
     }
 
     buildTypes {
