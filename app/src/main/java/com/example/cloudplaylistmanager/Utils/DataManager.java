@@ -630,7 +630,7 @@ public class DataManager {
                     audio.setTitle(ValidateFileName(streamInfo.getTitle()));
                     audio.setThumbnailSource(streamInfo.getThumbnail());
                     audio.setThumbnailType(PlaybackAudioInfo.PlaybackMediaType.STREAM);
-                    audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + ".opus");
+                    audio.setAudioSource(this.appMusicDirectory.getAbsolutePath() + File.separator + audio.getTitle() + "." + this.settings.extension);
                     audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
                     audio.setOrigin(url);
 
@@ -658,6 +658,7 @@ public class DataManager {
                 File searchFile = DoesFileExistWithName(this.appMusicDirectory,audio.getTitle(),"audio");
                 if(searchFile != null) {
                     //If the file already exists, then don't re-download it.
+                    audio.setAudioSource(searchFile.getAbsolutePath());
                     successDownload = true;
                 }
             }

@@ -103,7 +103,7 @@ public class ImportsFragment extends Fragment {
                         @Override
                         public void onComplete() {
                             //Updates the UI after a successful sync.
-                            viewModel.updateData(playlists.get(position).first);
+                            viewModel.updateData(parentUuidKey);
                             SendToast("Successfully Synced Playlist.");
                             HideProgressDialog();
                         }

@@ -318,7 +318,10 @@ public class MediaPlayerActivity extends AppCompatActivity {
                     if (musicService != null) {
                         mediaPlayerSeekBar.setProgress(musicService.GetCurrentPosition());
                         mediaPlayerCurrentTime.setText(ConvertTimeUnitsToString(musicService.GetCurrentPosition()));
-                        ShowNotification(); //Updates notification.
+                        if(!musicService.IsPaused()) {
+                            //Updates notification.
+                            ShowNotification();
+                        }
                     }
                 } catch(Exception e) {
                     mediaPlayerSeekBar.setProgress(0);
