@@ -23,6 +23,11 @@ public class PlatformCompatUtility {
         SOUNDCLOUD
     }
 
+    /* SPOTIFY COMPAT NOTE:
+        Compatibility with Spotify can be achieved by searching for the title and author using youtubedl's
+        search, then taking the best resulting youtube url.
+     */
+
     /**
      * Downloads song with the given, valid URL into the MUSIC directory.
      * It is required to implement {@link DownloadListener} to obtain the
