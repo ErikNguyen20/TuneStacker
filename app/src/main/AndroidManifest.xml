@@ -22,29 +22,41 @@
             android:excludeFromRecents="true"
             android:label="@string/popup_create_new_title"
             android:exported="false"
-            android:theme="@style/CustomDialogTheme" />
+            android:theme="@style/CustomDialogTheme"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".ui.addNewPopupSingle.AddNewPopupSingleActivity"
             android:excludeFromRecents="true"
             android:exported="false"
             android:label="@string/popup_create_new_title"
-            android:theme="@style/CustomDialogTheme" />
+            android:theme="@style/CustomDialogTheme"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".ui.playlistviewnormal.PlaylistImportActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".ui.playlistviewnested.PlaylistNestedActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".MusicPlayer.MediaPlayerActivity"
-            android:exported="false" />
+            android:exported="false"
+            android:screenOrientation="portrait"/>
         <activity
             android:name=".LandingActivity"
             android:exported="false"
-            android:label="@string/title_activity_landing" />
+            android:label="@string/title_activity_landing"
+            android:screenOrientation="portrait"/>
 
         <service
             android:name=".MusicPlayer.MusicService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/app_name" />
+
+        <service
+            android:name=".Utils.DownloadService"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name" />
@@ -62,7 +74,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
