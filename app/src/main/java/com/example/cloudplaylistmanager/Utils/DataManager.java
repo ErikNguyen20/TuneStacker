@@ -847,9 +847,11 @@ public class DataManager {
         Thread thread = new Thread(() -> {
             PlaylistInfo playlist = GetPlaylistFromKey(playlistKey);
             if(playlist != null) {
+                String playlistDirectoryName = ValidateFileName(playlist.getTitle());
+
                 //Iterates through all of the audios in the playlist and exports each one.
                 for(PlaybackAudioInfo audio : playlist.getAllVideos()) {
-                    ExportSong(audio.getTitle(), ValidateFileName(playlist.getTitle()));
+                    ExportSong(audio.getTitle(), playlistDirectoryName);
                     exportListener.onProgress("Exporting: " + audio.getTitle());
                 }
                 exportListener.onComplete("Successfully Exported Playlist.");
@@ -885,6 +887,11 @@ public class DataManager {
             }
             else {
                 fileDestination = new File(this.exportDirectory, audioFile.getName());
+            }
+
+            //If the settings do not allow overrides and the file exists, then do not export.
+            if(!this.settings.overrideExport && fileDestination.exists()) {
+                return false;
             }
 
             //Writes bytes from the input stream into the output stream.

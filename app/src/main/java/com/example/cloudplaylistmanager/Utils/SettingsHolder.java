@@ -13,11 +13,13 @@ public class SettingsHolder implements Serializable {
     public static final String DEFAULT_EXTENSION = "opus";
     public static final boolean DEFAULT_EMBED_THUMBNAIL = true;
     public static final boolean DEFAULT_DOWNLOAD_THUMBNAIL = true;
+    public static final boolean DEFAULT_OVERRIDE_EXPORT = false;
 
     public enum SettingsFields {
         EMBED_THUMBNAIL,
         DOWNLOAD_THUMBNAIL,
-        EXTENSION
+        EXTENSION,
+        OVERRIDE_EXPORT
     }
 
     @Expose
@@ -26,6 +28,8 @@ public class SettingsHolder implements Serializable {
     public boolean downloadThumbnail;
     @Expose
     public String extension;
+    @Expose
+    public boolean overrideExport;
 
     /**
      * Instantiates a new SettingsHolder object.
@@ -34,6 +38,7 @@ public class SettingsHolder implements Serializable {
         this.embedThumbnail = DEFAULT_EMBED_THUMBNAIL;
         this.downloadThumbnail = DEFAULT_DOWNLOAD_THUMBNAIL;
         this.extension = DEFAULT_EXTENSION;
+        this.overrideExport = DEFAULT_OVERRIDE_EXPORT;
     }
 
     /**
@@ -52,6 +57,9 @@ public class SettingsHolder implements Serializable {
                     break;
                 case DOWNLOAD_THUMBNAIL:
                     this.downloadThumbnail = (boolean) value;
+                    break;
+                case OVERRIDE_EXPORT:
+                    this.overrideExport = (boolean) value;
                     break;
             }
         } catch(Exception e) {

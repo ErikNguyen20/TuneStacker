@@ -37,7 +37,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="42dp"
+            android:layout_marginTop="40dp"
             android:layout_marginBottom="8dp"
             android:text="@string/settings_download_title"
             android:layout_marginStart="16dp"
@@ -95,6 +95,24 @@
             android:layout_marginEnd="8dp"
             android:background="?attr/colorOnSecondary" />
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="8dp"
+            android:text="@string/settings_export_title"
+            android:layout_marginStart="16dp"
+            android:textSize="26sp"
+            android:textColor="?attr/colorSecondary"
+            android:textStyle="bold"/>
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch_export_override"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:textSize="16sp"
+            android:text="@string/settings_export_override"/>
 
 
     </LinearLayout>

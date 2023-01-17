@@ -22,6 +22,7 @@ public class SettingsFragment extends Fragment {
 
     private SwitchCompat embedButton;
     private SwitchCompat downloadButton;
+    private SwitchCompat overrideExportButton;
     private Spinner spinner;
     private ArrayAdapter<CharSequence> adapter;
 
@@ -34,6 +35,7 @@ public class SettingsFragment extends Fragment {
 
         this.embedButton = this.binding.switchEmbed;
         this.downloadButton = this.binding.switchDownload;
+        this.overrideExportButton = this.binding.switchExportOverride;
         this.spinner = this.binding.spinner;
 
 
@@ -49,6 +51,13 @@ public class SettingsFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                 DataManager.getInstance().SetSettingsField(SettingsHolder.SettingsFields.DOWNLOAD_THUMBNAIL, isChecked);
+            }
+        });
+        //Sets the click listener for the export override switch
+        this.overrideExportButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
+                DataManager.getInstance().SetSettingsField(SettingsHolder.SettingsFields.OVERRIDE_EXPORT, isChecked);
             }
         });
 
@@ -80,6 +89,7 @@ public class SettingsFragment extends Fragment {
         SettingsHolder settings = DataManager.getInstance().GetSettings();
         this.embedButton.setChecked(settings.embedThumbnail);
         this.downloadButton.setChecked(settings.downloadThumbnail);
+        this.overrideExportButton.setChecked(settings.overrideExport);
 
         int position = this.adapter.getPosition(settings.extension);
         this.spinner.setSelection(Math.max(position, 0));

@@ -43,8 +43,10 @@
     <string name="popup_warning_line_2">Would you like to continue?</string>
     <string name="settings_download_title">Download</string>
     <string name="settings_embed_thumbnail">Embed Thumbnail</string>
-    <string name="settings_download_thumbnail">Download Thumbnail</string>
+    <string name="settings_download_thumbnail">Download Thumbnail for Cache</string>
+    <string name="settings_export_override">Override Existing File</string>
     <string name="settings_output_extension">Output File Extension</string>
+    <string name="settings_export_title">Export</string>
     <string name="settings_data_title">Data</string>
 
     <string-array name="valid_audio_ext">
