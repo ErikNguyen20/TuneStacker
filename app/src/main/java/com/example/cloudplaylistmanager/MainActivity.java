@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
 
@@ -42,7 +43,16 @@ public class MainActivity extends AppCompatActivity {
         if(!CheckPermission()) {
             RequestPermission();
         }
+        else {
+            LaunchLandingActivity();
+        }
+    }
 
+    /**
+     * Launches the Landing Activity.
+     * This also loads the user's saved data.
+     */
+    public void LaunchLandingActivity() {
         //Initializes the saved data for the application.
         DataManager.Initialize(getApplicationContext());
         DataManager.getInstance().ConstructPlaylistFromLocalFiles();
@@ -104,9 +114,11 @@ public class MainActivity extends AppCompatActivity {
                 if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     if(Environment.isExternalStorageManager()) {
                         Log.d("Permissions", "Storage Permission Granted");
+                        LaunchLandingActivity();
                     }
                     else {
                         Log.d("Permissions", "Storage Permission Denied");
+                        Toast.makeText(getApplicationContext(),"Please enable Storage Permissions to use this application.",Toast.LENGTH_LONG).show();
                     }
                 }
             });
@@ -118,9 +130,11 @@ public class MainActivity extends AppCompatActivity {
             if(grantResults.length > 0) {
                 if(grantResults[0] == PackageManager.PERMISSION_GRANTED && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
                     Log.d("Permissions", "Storage Permission Granted");
+                    LaunchLandingActivity();
                 }
                 else {
                     Log.d("Permissions", "Storage Permission Denied");
+                    Toast.makeText(getApplicationContext(),"Please enable Storage Permissions to use this application.",Toast.LENGTH_LONG).show();
                 }
             }
         }

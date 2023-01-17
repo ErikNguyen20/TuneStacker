@@ -6,6 +6,7 @@
     <string name="register_field_password_hint">Password</string>
     <string name="register_text_display">Create New Account</string>
     <string name="register_button">Register</string>
+    <string name="permissions_failed_storage">Please enable Storage Permissions.</string>
     <string name="title_activity_landing">LandingActivity</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Library</string>

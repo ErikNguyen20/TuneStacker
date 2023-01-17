@@ -346,10 +346,12 @@ public class DataManager {
         if(key == null || key.isEmpty()) {
             return null;
         }
+        //If the key belongs to a nested playlist, return the item.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             return playlist;
         }
+        //If the key belongs to an imported playlist, return the item.
         playlist = this.importedPlaylistData.get(key);
         return playlist;
     }
@@ -360,6 +362,7 @@ public class DataManager {
      * @param newName New name of the playlist.
      */
     public void RenamePlaylist(String key, String newName) {
+        //If the key belongs to a nested playlist, update it.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             if(playlist.getTitle().equals(newName) || newName.isEmpty()) {
@@ -371,6 +374,7 @@ public class DataManager {
             SaveNestedData();
             return;
         }
+        //If the key belongs to an imported playlist, rename it.
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             if(playlist.getTitle().equals(newName) || newName.isEmpty()) {
@@ -390,6 +394,7 @@ public class DataManager {
      * @param key Key of the playlist that is to be modified from the database.
      */
     public void UpdatePlaylistLastViewed(String key) {
+        //If the key belongs to a nested playlist, update it.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             playlist.updateLastViewed();
@@ -398,6 +403,7 @@ public class DataManager {
             SaveNestedData();
             return;
         }
+        //If the key belongs to an imported playlist, update it.
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             playlist.updateLastViewed();
@@ -413,6 +419,7 @@ public class DataManager {
      * @param audio Newly added audio source.
      */
     public boolean AddSongToPlaylist(String key, PlaybackAudioInfo audio) {
+        //If the key belongs to an nested playlist, add to it.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             if(playlist.ContainsAudio(audio)) {
@@ -424,6 +431,7 @@ public class DataManager {
             SaveNestedData();
             return true;
         }
+        //If the key belongs to an imported playlist, add to it.
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             if(playlist.ContainsAudio(audio)) {
@@ -449,6 +457,7 @@ public class DataManager {
         if(audioName == null || audioName.isEmpty()) {
             return false;
         }
+        //If the key belongs to a nested playlist, update it.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             boolean success = playlist.RemoveAudio(audioName);
@@ -459,6 +468,7 @@ public class DataManager {
             }
             return success;
         }
+        //If the key belongs to an imported playlist, remove from it.
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             boolean success = playlist.RemoveAudio(audioName);
@@ -475,7 +485,7 @@ public class DataManager {
 
     /**
      * Removes a song from ALL playlists in the Data.
-     * @param audioName
+     * @param audioName Name of the audio.
      */
     public void RemoveSongFromAll(String audioName) {
         if(audioName == null || audioName.isEmpty()) {
@@ -523,6 +533,7 @@ public class DataManager {
      * @param order Order in which the items should be placed.
      */
     public void UpdateOrderOfItemsInPlaylist(String key, HashMap<String, Integer> order) {
+        //If the key belongs to an nested playlist, update it.
         PlaylistInfo playlist = this.nestedPlaylistData.get(key);
         if(playlist != null) {
             playlist.SetItemsOrder(order);
@@ -531,6 +542,7 @@ public class DataManager {
             SaveNestedData();
             return;
         }
+        //If the key belongs to an imported playlist, update it.
         playlist = this.importedPlaylistData.get(key);
         if(playlist != null) {
             playlist.SetItemsOrder(order);
@@ -940,7 +952,7 @@ public class DataManager {
     }
 
     /**
-     * Permanately deletes an audio from all playlists and the local files.
+     * Permanently deletes an audio from all playlists and the local files.
      * @param audioTitle Name of the audio
      * @return If it was successfully deleted.
      */
@@ -951,6 +963,7 @@ public class DataManager {
         }
         File thumbFile = DoesFileExistWithName(this.appImageDirectory,audioTitle,null);
 
+        //If the file exists, perform a deletion.
         if(audioFile.exists()) {
             RemoveSongFromAll(audioTitle);
             if(thumbFile != null && thumbFile.exists()) {
