@@ -37,6 +37,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
@@ -473,6 +474,50 @@ public class DataManager {
     }
 
     /**
+     * Removes a song from ALL playlists in the Data.
+     * @param audioName
+     */
+    public void RemoveSongFromAll(String audioName) {
+        if(audioName == null || audioName.isEmpty()) {
+            return;
+        }
+        boolean hasChanged = false;
+
+        //Removes the audio from imported playlists.
+        HashMap<String, PlaylistInfo> copyOfImports = new HashMap<>();
+        for(Map.Entry<String, PlaylistInfo> entry : this.importedPlaylistData.entrySet()) {
+            PlaylistInfo value = entry.getValue();
+            //Only updates imported playlist if successfully removed the audio.
+            boolean removed = value.RemoveAudio(audioName);
+            if(removed) {
+                hasChanged = true;
+                copyOfImports.put(entry.getKey(), value);
+            }
+        }
+        this.importedPlaylistData.putAll(copyOfImports);
+
+        //Removes the audio from nested playlists.
+        HashMap<String, PlaylistInfo> copyOfNested = new HashMap<>();
+        for(Map.Entry<String, PlaylistInfo> entry : this.nestedPlaylistData.entrySet()) {
+            PlaylistInfo value = entry.getValue();
+            //Only updates nested playlist if successfully removed the audio.
+            boolean removed = value.RemoveAudio(audioName);
+            if(removed) {
+                hasChanged = true;
+                copyOfNested.put(entry.getKey(), value);
+            }
+        }
+        this.nestedPlaylistData.putAll(copyOfNested);
+
+        //Saves the data.
+        if(hasChanged) {
+            RefreshNestedPlaylist(null);
+            SaveImportedData();
+            SaveNestedData();
+        }
+    }
+
+    /**
      * Sets the loose ordering list of the specified playlist.
      * @param key Key of the playlist that is to be modified from the database.
      * @param order Order in which the items should be placed.
@@ -737,8 +782,8 @@ public class DataManager {
      * @param downloadListener Listener used to get the results/errors of this call.
      */
     public void DownloadFileFromDirectoryToDirectory(Uri from, DownloadListener downloadListener) {
-        InputStream inputStream;
-        OutputStream outputStream;
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
 
         //Gets file destination and checks to see if the file already exists.
         File fileDestination = new File(this.appMusicDirectory, GetFileNameFromUri(from));
@@ -778,6 +823,19 @@ public class DataManager {
             Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
             downloadListener.onError(-1,"File failed to download.");
+
+            //Tries to close input/output stream
+            if(inputStream != null) {
+                try{
+                    inputStream.close();
+                } catch (IOException ignored) {}
+            }
+            if(outputStream != null) {
+                try{
+                    outputStream.flush();
+                    outputStream.close();
+                } catch (IOException ignored) {}
+            }
         }
     }
 
@@ -811,6 +869,10 @@ public class DataManager {
         if(audioFile == null) {
             return false;
         }
+
+        InputStream audioInputStream = null;
+        OutputStream audioOutputStream = null;
+
         try {
             //If optionalDirectory is defined, create a folder to place the contents in instead.
             File fileDestination;
@@ -826,8 +888,8 @@ public class DataManager {
             }
 
             //Writes bytes from the input stream into the output stream.
-            InputStream audioInputStream = new FileInputStream(audioFile);
-            OutputStream audioOutputStream = new FileOutputStream(fileDestination);
+            audioInputStream = new FileInputStream(audioFile);
+            audioOutputStream = new FileOutputStream(fileDestination);
 
             byte[] byteArrayBuffer = new byte[1024];
             int length;
@@ -839,6 +901,7 @@ public class DataManager {
             audioOutputStream.flush();
             audioOutputStream.close();
 
+            //Scans media item.
             MediaScannerConnection.scanFile(this.context, new String[]{fileDestination.toString()}, null,
                     new MediaScannerConnection.OnScanCompletedListener() {
                 @Override
@@ -851,8 +914,44 @@ public class DataManager {
         } catch (Exception e) {
             Log.e(LOG_TAG, (e.getMessage() != null) ? e.getMessage() : "An Error has Occurred");
             e.printStackTrace();
+
+            //Tries to close input/output stream
+            if(audioInputStream != null) {
+                try{
+                    audioInputStream.close();
+                } catch (IOException ignored) {}
+            }
+            if(audioOutputStream != null) {
+                try{
+                    audioOutputStream.flush();
+                    audioOutputStream.close();
+                } catch (IOException ignored) {}
+            }
+
             return false;
         }
+    }
+
+    /**
+     * Permanately deletes an audio from all playlists and the local files.
+     * @param audioTitle Name of the audio
+     * @return If it was successfully deleted.
+     */
+    public boolean DeleteSong(String audioTitle) {
+        File audioFile = DoesFileExistWithName(this.appMusicDirectory,audioTitle,"audio");
+        if(audioFile == null) {
+            return false;
+        }
+        File thumbFile = DoesFileExistWithName(this.appImageDirectory,audioTitle,null);
+
+        if(audioFile.exists()) {
+            RemoveSongFromAll(audioTitle);
+            if(thumbFile != null && thumbFile.exists()) {
+                thumbFile.delete();
+            }
+            return audioFile.delete();
+        }
+        return false;
     }
 
     /**
@@ -1006,7 +1105,7 @@ public class DataManager {
         }
         for(File file : files) {
             if(fileName.equals(file.getName().split("\\.(?=[^\\.]+$)")[0])) {
-                if(optionalMime == null || !GetMimeType(file,"").contains(optionalMime)) {
+                if(optionalMime != null && !GetMimeType(file,"").contains(optionalMime)) {
                     continue;
                 }
                 return file;

@@ -11,21 +11,17 @@ import androidx.lifecycle.Observer;
 import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
-import android.content.ComponentName;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
+import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
-import android.os.PowerManager;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -34,11 +30,9 @@ import android.widget.Toast;
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.DownloadListener;
-import com.example.cloudplaylistmanager.Utils.DownloadPlaylistListener;
 import com.example.cloudplaylistmanager.Utils.DownloadService;
 import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
-import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 /**
  * Popup Dialog Activity that implements the interface to download a new Song or Playlist.
@@ -47,7 +41,6 @@ import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
  */
 public class AddNewPopupSingleActivity extends AppCompatActivity {
     private static final String LOG_TAG = "PopupSingleActivity";
-    private static final String WAKE_LOCK_TAG = "popup:single";
     public static final String PARENT_UUID_KEY_TAG = "parent_uuid_key";
     public static final String IS_PLAYLIST_TAG = "is_playlist";
     private static final String TOAST_KEY = "toast_key";
@@ -61,8 +54,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
     private EditText urlField;
     private ProgressDialog progressDialog;
 
-    private DownloadService downloadService = null;
-    private ServiceConnection serviceConnection;
+    private BroadcastReceiver updateUIReceiver;
 
     private String uuidParentKey;
     private boolean isPlaylist;
@@ -180,29 +172,52 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
 
         setFinishOnTouchOutside(true);
 
-        this.serviceConnection = new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName componentName, IBinder iBinder) {
-                Log.d(LOG_TAG,"Service Connected");
-                DownloadService.DownloadServiceBinder binder = (DownloadService.DownloadServiceBinder) iBinder;
-                downloadService = binder.getBinder();
-            }
-
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                downloadService = null;
-                Log.d(LOG_TAG,"Service Disconnected");
-            }
-        };
-
-        Intent serviceIntent = new Intent(this, DownloadService.class);
-        bindService(serviceIntent, this.serviceConnection, Context.BIND_AUTO_CREATE);
-
         //Sets up progress dialog.
         this.progressDialog = new ProgressDialog(this);
         this.progressDialog.setTitle("Downloading");
         this.progressDialog.setCanceledOnTouchOutside(false);
         this.progressDialog.setCancelable(false);
+
+        //Sets up broadcast receiver for download updates.
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(DownloadService.BROADCAST_ACTION_IDENTIFIER);
+        this.updateUIReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                if(intent == null) {
+                    return;
+                }
+                String broadcastType = intent.getStringExtra(DownloadService.BROADCAST_ACTION_IDENTIFIER);
+                switch(broadcastType) {
+                    case DownloadService.BROADCAST_NOTIFICATION_COMPLETE:
+                        //Notify the user that the download was complete.
+                        HideProgressDialog();
+                        SendToast("Download Complete!");
+                        finish();
+                        break;
+                    case DownloadService.BROADCAST_NOTIFICATION_PROGRESS_MESSAGE:
+                        String messageProgress = intent.getStringExtra(DownloadService.BROADCAST_NOTIFICATION_PROGRESS_MESSAGE);
+                        //Notify the user of the download progress.
+                        if(messageProgress != null && !messageProgress.isEmpty()) {
+                            UpdateProgressDialog(messageProgress);
+                        }
+                        break;
+                    case DownloadService.BROADCAST_NOTIFICATION_ERROR:
+                        int errorCode = intent.getIntExtra(DownloadService.BROADCAST_NOTIFICATION_ERROR_CODE,0);
+                        String messageError = intent.getStringExtra(DownloadService.BROADCAST_NOTIFICATION_ERROR_MESSAGE);
+                        if(errorCode == -1) {
+                            //If there is a critical error, display the error and stop the download.
+                            HideProgressDialog();
+                            SendToast(messageError);
+                        }
+                        else {
+                            UpdateProgressDialog(messageError);
+                        }
+                        break;
+                }
+            }
+        };
+        registerReceiver(this.updateUIReceiver, filter);
     }
 
 
@@ -215,47 +230,14 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
             SendToast("Invalid Url.");
             return;
         }
-        //Checks if download service has been bound.
-        if(this.downloadService == null) {
-            SendToast("Download Service is currently down. Try Restarting.");
-            return;
-        }
 
         StartProgressDialog("Preparing for download...");
 
-        //Downloads playlist using the PlatformCompactUtility.
-        this.downloadService.StartPlaylistDownload(urlInput, new DownloadPlaylistListener() {
-            @Override
-            public void onComplete(PlaylistInfo playlist) {
-                //When the playlist is successfully downloaded, add the playlist to DataManager.
-                if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
-                    DataManager.getInstance().CreateNewPlaylist(playlist,false,uuidParentKey);
-                }
-                else {
-                    DataManager.getInstance().CreateNewPlaylist(playlist,false,null);
-                }
-                HideProgressDialog();
-                SendToast("Complete!");
-                finish();
-            }
-
-            @Override
-            public void onProgressUpdate(String message) {
-                UpdateProgressDialog(message);
-            }
-
-            @Override
-            public void onError(int attempt, String error) {
-                if(attempt == -1) {
-                    //If there is a critical error, display the error and stop the download.
-                    HideProgressDialog();
-                    SendToast(error);
-                }
-                else {
-                    UpdateProgressDialog(error);
-                }
-            }
-        });
+        //Downloads playlist using the PlatformCompactUtility in DownloadService.
+        Intent serviceIntent = new Intent(this, DownloadService.class);
+        serviceIntent.putExtra(DownloadService.INTENT_URL_TAG, urlInput);
+        serviceIntent.putExtra(DownloadService.INTENT_PLAYLIST_TAG,true);
+        startService(serviceIntent);
     }
 
     /**
@@ -294,42 +276,14 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         }
         else if(!urlInput.isEmpty()){
             //Checks if download service has been bound.
-            if(this.downloadService == null) {
-                SendToast("Download Service is currently down. Try Restarting.");
-                return;
-            }
 
             StartProgressDialog("Preparing for download...");
+
             //Downloads audio using the PlatformCompactUtility.
-            this.downloadService.StartAudioDownload(urlInput, new DownloadListener() {
-                @Override
-                public void onComplete(PlaybackAudioInfo audio) {
-                    //When the audio is successfully downloaded, add the audio to DataManager.
-                    if(uuidParentKey != null && !uuidParentKey.isEmpty()) {
-                        DataManager.getInstance().AddSongToPlaylist(uuidParentKey,audio);
-                    }
-                    HideProgressDialog();
-                    SendToast("Complete!");
-                    finish();
-                }
-
-                @Override
-                public void onProgressUpdate(float progress, long etaSeconds) {
-                    UpdateProgressDialog("Download Progress: " + progress);
-                }
-
-                @Override
-                public void onError(int attempt, String error) {
-                    if(attempt == -1) {
-                        //If there is a critical error, display the error and stop the download.
-                        HideProgressDialog();
-                        SendToast(error);
-                    }
-                    else {
-                        UpdateProgressDialog("Failed, retrying download. Retrying: " + attempt);
-                    }
-                }
-            });
+            Intent serviceIntent = new Intent(this, DownloadService.class);
+            serviceIntent.putExtra(DownloadService.INTENT_URL_TAG, urlInput);
+            serviceIntent.putExtra(DownloadService.INTENT_PLAYLIST_TAG,false);
+            startService(serviceIntent);
         }
         else {
             SendToast("Please select a means of adding an Audio Source.");
@@ -411,8 +365,8 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
         if(this.progressDialog != null) {
             this.progressDialog.dismiss();
         }
-        if(this.downloadService != null) {
-            unbindService(this.serviceConnection);
+        if(this.updateUIReceiver != null) {
+            unregisterReceiver(this.updateUIReceiver);
         }
         super.onDestroy();
     }

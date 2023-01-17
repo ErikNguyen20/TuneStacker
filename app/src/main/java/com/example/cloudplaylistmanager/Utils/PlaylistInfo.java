@@ -188,7 +188,9 @@ public class PlaylistInfo implements Serializable {
      */
     public boolean RemoveAudio(String audioTitle) {
         PlaybackAudioInfo audio = this.insertedVideos.remove(audioTitle);
-        UpdateAllVideos();
+        if(audio != null) {
+            UpdateAllVideos();
+        }
         return audio != null;
     }
 

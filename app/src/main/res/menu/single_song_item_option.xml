@@ -6,4 +6,10 @@
         android:title="@string/export_option_text"
         android:icon="@drawable/ic_baseline_drive_file_move_24"/>
 
+    <item
+        android:id="@+id/delete_option"
+        android:title="@string/delete_option_text"
+        android:icon="@drawable/ic_baseline_delete_24"
+        android:iconTint="@color/red"/>
+
 </menu>

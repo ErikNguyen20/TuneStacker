@@ -80,12 +80,23 @@ public class SavedSongsFragment extends Fragment {
             @Override
             public void SelectMenuOption(int position, int itemId, String optional) {
                 if(itemId == R.id.export_option) {
+                    //Exports the audio to the music directory.
                     boolean success = DataManager.getInstance().ExportSong(optional,null);
                     if(success) {
                         Toast.makeText(getActivity(),"Song Successfully Exported.",Toast.LENGTH_SHORT).show();
                     }
                     else {
                         Toast.makeText(getActivity(),"Song Failed to Export.",Toast.LENGTH_SHORT).show();
+                    }
+                } else if(itemId == R.id.delete_option) {
+                    //Permanently deletes the song from the device.
+                    boolean success = DataManager.getInstance().DeleteSong(optional);
+                    if(success) {
+                        viewModel.updateData();
+                        Toast.makeText(getActivity(),"Song Permanently Deleted.",Toast.LENGTH_SHORT).show();
+                    }
+                    else {
+                        Toast.makeText(getActivity(),"Song Failed to Delete.",Toast.LENGTH_SHORT).show();
                     }
                 }
             }
