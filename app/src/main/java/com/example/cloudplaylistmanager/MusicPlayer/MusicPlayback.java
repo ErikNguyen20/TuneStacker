@@ -1,15 +1,14 @@
 package com.example.cloudplaylistmanager.MusicPlayer;
 
-import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.net.wifi.WifiManager;
-import android.os.Binder;
-import android.os.IBinder;
 import android.os.PowerManager;
-import android.support.v4.media.session.MediaSessionCompat;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -21,48 +20,47 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Random;
 
-
-/**
- * Music Service. Implements {@link MediaPlayer} as a service, allowing
- * for background play. This service is required to be bound by a service connection
- * to use the various methods.
- */
-public class MusicService extends Service implements
+public class MusicPlayback implements
         MediaPlayer.OnCompletionListener, MediaPlayer.OnPreparedListener,
-        MediaPlayer.OnBufferingUpdateListener, MediaPlayer.OnErrorListener,
-        AudioManager.OnAudioFocusChangeListener {
-    private static final String LOG_TAG = "MusicService";
+        MediaPlayer.OnErrorListener, AudioManager.OnAudioFocusChangeListener {
+    private static final String LOG_TAG = "MusicPlayback";
     public static final int NEXT_SONG_IGNORED = -1;
     public static final int NEXT_SONG_PREV = -2;
+    private static final float VOLUME_DEFAULT = 1.0f;
+    private static final float VOLUME_DUCK = 0.5f;
 
-    private MusicServiceBinder musicBinder = new MusicServiceBinder();
-    private OnUpdatePlayerListener onUpdatePlayerListener = null;
-    private MediaPlayer mediaPlayer = null;
+    private Context context;
+    private MediaPlayer mediaPlayer;
+    private AudioManager audioManager;
+    private OnUpdatePlayerListener onUpdatePlayerListener;
 
-    private ArrayList<PlaybackAudioInfo> playlist = null;
+    private ArrayList<PlaybackAudioInfo> playlist;
     private ArrayList<Integer> shuffledPositions;
     private HashSet<Integer> errorPreparingPositions;
+
     private int currentPlayPosition, songCounter;
-    private boolean isShuffle, isRepeat = false;
-    private boolean isPaused, isReduced = false; //Reduced when AudioManager invokes audio focus loss transient can duck
-    private boolean isInitialized;
-    private int bufferingProgressPercent = 0;
+    private boolean isPaused, isShuffle, isRepeat;
+    //Reduced when AudioManager invokes audio focus loss transient can duck
+    private boolean isInitialized, isStopped, isReduced, isNoisyRegistered;
+
 
     /**
-     * Initializes the Music Service. This method must be called before using the service.
-     * @param playlist Desired audio contents that will be played by the service.
+     * Constructs a new MusicPlayback object.
+     * @param context Context of the player.
+     * @param playlist List of audio objects
+     * @param onUpdatePlayerListener Listener for callbacks.
      */
-    public void InitializePlayer(ArrayList<PlaybackAudioInfo> playlist, OnUpdatePlayerListener onUpdatePlayerListener) {
-        if(this.mediaPlayer == null) {
-            NewMediaPlayer();
-        }
-        this.isInitialized = false;
-        this.mediaPlayer.reset();
+    public MusicPlayback(Context context, ArrayList<PlaybackAudioInfo> playlist,
+                         @Nullable OnUpdatePlayerListener onUpdatePlayerListener) {
         this.currentPlayPosition = 0;
         this.songCounter = 0;
+        this.errorPreparingPositions = new HashSet<>();
+
+        this.context = context;
         this.playlist = playlist;
         this.onUpdatePlayerListener = onUpdatePlayerListener;
-        this.errorPreparingPositions = new HashSet<>();
+        this.audioManager = (AudioManager) context.getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+        NewMediaPlayer();
         GenerateShuffledList();
     }
 
@@ -83,17 +81,54 @@ public class MusicService extends Service implements
         NextSong(startPos);
     }
 
-
+    /**
+     * Links the listener for media callbacks.
+     * @param onUpdatePlayerListener Listener for callbacks.
+     */
+    public void LinkListener(OnUpdatePlayerListener onUpdatePlayerListener) {
+        this.onUpdatePlayerListener = onUpdatePlayerListener;
+    }
 
     /**
-     * Resumes the Music Player.
+     * Releases the media player and calls the onEnd callback.
      */
-    public void Resume() {
-        if(!this.isInitialized || !this.isPaused) {
+    public void Destroy() {
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onEnd();
+        }
+        if(this.mediaPlayer != null) {
+            try {
+                if (this.isInitialized && this.mediaPlayer.isPlaying()) {
+                    this.mediaPlayer.stop();
+                }
+            } catch(Exception ignore) {}
+
+            try{ this.mediaPlayer.reset(); } catch(Exception ignore) {}
+            this.mediaPlayer.release();
+        }
+        UnRegisterAudioNoisyReceiver();
+        Log.d(LOG_TAG,"Destructor called.");
+    }
+
+    /**
+     * Starts/Resumes the Music Player.
+     */
+    public void Play() {
+        if(!this.isInitialized) {
             return;
         }
-        this.mediaPlayer.start();
-        this.isPaused = false;
+        //If the media player is stopped, prepare it.
+        if(this.isStopped) {
+            Prepare(null);
+            return;
+        }
+        if(this.isPaused || !this.mediaPlayer.isPlaying()) {
+            RequestAudioFocus();
+            RegisterAudioNoisyReceiver();
+            this.mediaPlayer.start();
+            this.isStopped = false;
+            this.isPaused = false;
+        }
 
         if(this.onUpdatePlayerListener != null) {
             this.onUpdatePlayerListener.onPauseUpdate(false);
@@ -101,28 +136,33 @@ public class MusicService extends Service implements
     }
 
     /**
-     * Stops the Music Player.
-     */
-    public void Stop() {
-        if(!this.isInitialized) {
-            return;
-        }
-        this.mediaPlayer.stop();
-        this.isPaused = false;
-    }
-
-    /**
      * Pauses the Music Player.
      */
     public void Pause() {
-        if(!this.isInitialized || this.isPaused) {
+        if(!this.isInitialized || this.isPaused || !this.mediaPlayer.isPlaying()) {
             return;
         }
+
         this.mediaPlayer.pause();
         this.isPaused = true;
+        StopAudioFocus();
+        UnRegisterAudioNoisyReceiver();
 
         if(this.onUpdatePlayerListener != null) {
             this.onUpdatePlayerListener.onPauseUpdate(true);
+        }
+    }
+
+    /**
+     * Stops the Music Player.
+     */
+    public void Stop() {
+        if(this.isInitialized) {
+            this.mediaPlayer.stop();
+            this.isStopped = true;
+            this.isPaused = false;
+            StopAudioFocus();
+            UnRegisterAudioNoisyReceiver();
         }
     }
 
@@ -134,6 +174,7 @@ public class MusicService extends Service implements
         if(!this.isInitialized) {
             return;
         }
+        //Clamps position value within the duration bounds.
         if(pos > this.mediaPlayer.getDuration()) {
             pos = this.mediaPlayer.getDuration();
         }
@@ -150,36 +191,6 @@ public class MusicService extends Service implements
     public void SwitchSong(int pos) {
         Stop();
         NextSong(pos);
-    }
-
-    /**
-     * Retrieves the total duration of the current audio.
-     */
-    public int GetDuration() {
-        if(!this.isInitialized) {
-            return 0;
-        }
-        return this.mediaPlayer.getDuration();
-    }
-
-    /**
-     * Retrieves the current time position of the Music Player.
-     */
-    public int GetCurrentPosition() {
-        if(!this.isInitialized) {
-            return 0;
-        }
-        return this.mediaPlayer.getCurrentPosition();
-    }
-
-    /**
-     * Retrieves the current buffering progress of the Music Player (0-100).
-     */
-    public int GetBufferingProgress() {
-        if(!this.isInitialized) {
-            return 0;
-        }
-        return this.bufferingProgressPercent;
     }
 
     /**
@@ -201,6 +212,16 @@ public class MusicService extends Service implements
      */
     public boolean IsPaused() {
         return this.isPaused;
+    }
+
+    /**
+     * Retrieves Playing state of the Music Player.
+     */
+    public boolean IsPlaying() {
+        if(!this.isInitialized) {
+            return false;
+        }
+        return this.mediaPlayer.isPlaying();
     }
 
     /**
@@ -240,14 +261,42 @@ public class MusicService extends Service implements
     }
 
     /**
+     * Sets the volume of the media player
+     * @param volume Volume of the player (0.0f-1.0f)
+     */
+    public void SetVolume(float volume) {
+        if(this.mediaPlayer != null) {
+            this.mediaPlayer.setVolume(volume, volume);
+        }
+    }
+
+    /**
+     * Retrieves the total duration of the current audio.
+     */
+    public int GetDuration() {
+        if(!this.isInitialized) {
+            return 0;
+        }
+        return this.mediaPlayer.getDuration();
+    }
+
+    /**
+     * Retrieves the current time position of the Music Player.
+     */
+    public int GetCurrentPosition() {
+        if(!this.isInitialized) {
+            return 0;
+        }
+        return this.mediaPlayer.getCurrentPosition();
+    }
+
+    /**
      * Loads and Prepares the next song in the queue from the playlist.
+     * @param overridePosition Next position of the song.
      */
     private void NextSong(int overridePosition) {
         if(this.playlist.size() <= 0) {
-            if(this.onUpdatePlayerListener != null) {
-                this.onUpdatePlayerListener.onEnd();
-            }
-            stopSelf();
+            Destroy();
             return;
         }
 
@@ -270,10 +319,7 @@ public class MusicService extends Service implements
             this.songCounter++;
             if(this.songCounter >= this.playlist.size()) {
                 if(!this.isRepeat) {
-                    if(this.onUpdatePlayerListener != null) {
-                        this.onUpdatePlayerListener.onEnd();
-                    }
-                    stopSelf();
+                    Destroy();
                     return;
                 }
                 //If the song counter reaches the end of the list, re-generate a shuffled list.
@@ -302,21 +348,32 @@ public class MusicService extends Service implements
             this.onUpdatePlayerListener.onShuffleUpdate(this.isShuffle);
             this.onUpdatePlayerListener.onRepeatUpdate(this.isRepeat);
         }
-        this.isPaused = false;
-        this.isInitialized = false;
-        this.mediaPlayer.reset();
-        this.bufferingProgressPercent = 0;
 
-        Log.d("MusicPlayer","Selected Song - \"" + audio.getAudioSource() + "\"");
-        //Sets the datasource and prepares the audio based on the type.
+        Prepare(audio);
+    }
+
+    /**
+     * Prepares the media player with a given audio source.
+     * If the audio source is null, it assumes that the data source
+     * has already been set.
+     * @param audio Audio source that will be played.
+     */
+    private void Prepare(@Nullable PlaybackAudioInfo audio) {
+        this.isPaused = false;
+        this.isStopped = false;
+        this.isInitialized = false;
+
         try{
-            switch(audio.getAudioType()) {
-                case STREAM:
-                case LOCAL:
-                    this.mediaPlayer.setDataSource(audio.getAudioSource());
-                    break;
-                case UNKNOWN:
-                    throw new Exception("Unknown Media Source");
+            if(audio != null) {
+                this.mediaPlayer.reset();
+                switch(audio.getAudioType()) {
+                    case STREAM:
+                    case LOCAL:
+                        this.mediaPlayer.setDataSource(audio.getAudioSource());
+                        break;
+                    case UNKNOWN:
+                        throw new Exception("Unknown Media Source");
+                }
             }
             mediaPlayer.prepareAsync();
         } catch(Exception e) {
@@ -325,10 +382,7 @@ public class MusicService extends Service implements
             //If there is an error preparing this media, skip it to the next one.
             this.errorPreparingPositions.add(this.currentPlayPosition);
             if(this.errorPreparingPositions.size() >= this.playlist.size()) {
-                if(this.onUpdatePlayerListener != null) {
-                    this.onUpdatePlayerListener.onEnd();
-                }
-                stopSelf();
+                Destroy();
             }
             else {
                 NextSong(NEXT_SONG_IGNORED);
@@ -336,54 +390,23 @@ public class MusicService extends Service implements
         }
     }
 
+    /**
+     * Called when the song is finished playing.
+     */
     @Override
-    public void onCreate() {
-        super.onCreate();
-
-        this.errorPreparingPositions = new HashSet<>();
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if(this.mediaPlayer != null) {
-            if(this.mediaPlayer.isPlaying()) {
-                this.mediaPlayer.stop();
-            }
-            this.mediaPlayer.reset();
-            this.mediaPlayer.release();
+    public void onCompletion(MediaPlayer mediaPlayer) {
+        if(mediaPlayer.isPlaying()) {
+            mediaPlayer.stop();
         }
-        Log.d("MusicPlayer","Destructor called.");
-    }
-
-    @Override
-    public void onBufferingUpdate(MediaPlayer mP, int i) {
-        this.bufferingProgressPercent = i;
-    }
-
-    @Override
-    public void onCompletion(MediaPlayer mP) {
-        if(mP.isPlaying()) {
-            mP.stop();
-        }
+        this.isInitialized = false;
         NextSong(NEXT_SONG_IGNORED);
     }
 
+    /**
+     * Called when the media player encounters an error.
+     */
     @Override
-    public void onPrepared(MediaPlayer mP) {
-        this.isInitialized = true;
-        if(this.onUpdatePlayerListener != null) {
-            this.onUpdatePlayerListener.onPrepared(GetDuration());
-        }
-        if(!mP.isPlaying()) {
-            Log.d("MusicPlayer","Playing.");
-            mP.start();
-        }
-        this.errorPreparingPositions.remove(this.currentPlayPosition);
-    }
-
-    @Override
-    public boolean onError(MediaPlayer mP, int what, int extra) {
+    public boolean onError(MediaPlayer mediaPlayer, int what, int extra) {
         if(what == MediaPlayer.MEDIA_ERROR_SERVER_DIED) {
             Log.e("MusicPlayer","Media Error - Server Died.");
             NewMediaPlayer();
@@ -408,39 +431,103 @@ public class MusicService extends Service implements
     }
 
     /**
+     * Called when the media player is prepared.
+     */
+    @Override
+    public void onPrepared(MediaPlayer mediaPlayer) {
+        this.isInitialized = true;
+        this.isPaused = false;
+
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onPrepared(GetDuration());
+        }
+        Play();
+
+        this.errorPreparingPositions.remove(this.currentPlayPosition);
+    }
+
+    /**
+     * Request audio focus.
+     */
+    private boolean RequestAudioFocus() {
+        if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            AudioAttributes attrs = new AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+            AudioFocusRequest audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+                .setOnAudioFocusChangeListener(this)
+                .setAudioAttributes(attrs)
+                .build();
+            return this.audioManager.requestAudioFocus(audioFocusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+        }
+
+        return this.audioManager.requestAudioFocus(this,
+                AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN) ==
+                AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
+    }
+
+    /**
+     * Stops audio focus.
+     */
+    private void StopAudioFocus() {
+        this.audioManager.abandonAudioFocus(this);
+    }
+
+    /**
      * Handles Audio Focus Change.
      */
     @Override
     public void onAudioFocusChange(int focusChange) {
         switch(focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS:
+                try{ Stop(); } catch(Exception ignore) {}
+                break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 Pause();
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
                 if(!this.isReduced) {
-                    mediaPlayer.setVolume(0.5f,0.5f);
+                    SetVolume(VOLUME_DUCK);
                     this.isReduced = true;
                 }
                 break;
             case AudioManager.AUDIOFOCUS_GAIN:
-                Resume();
+                Play();
                 if(this.isReduced) {
-                    mediaPlayer.setVolume(1f,1f);
+                    SetVolume(VOLUME_DEFAULT);
                     this.isReduced = false;
                 }
                 break;
         }
     }
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return this.musicBinder;
+    //Broadcast receiver used to detect change in audio output source.
+    private final BroadcastReceiver audioNoisyReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                Pause();
+            }
+        }
+    };
+
+    /**
+     * Registers the audio noisy receiver.
+     */
+    private void RegisterAudioNoisyReceiver() {
+        if (!this.isNoisyRegistered) {
+            this.context.registerReceiver(this.audioNoisyReceiver, new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
+            this.isNoisyRegistered = true;
+        }
     }
-    public class MusicServiceBinder extends Binder {
-        public MusicService getBinder() {
-            return MusicService.this;
+
+    /**
+     * Unregisters the audio noisy receiver
+     */
+    private void UnRegisterAudioNoisyReceiver() {
+        if (this.isNoisyRegistered) {
+            this.context.unregisterReceiver(this.audioNoisyReceiver);
+            this.isNoisyRegistered = false;
         }
     }
 
@@ -456,11 +543,10 @@ public class MusicService extends Service implements
         }
         this.isPaused = false;
         this.mediaPlayer = new MediaPlayer();
-        this.mediaPlayer.setWakeMode(this, PowerManager.PARTIAL_WAKE_LOCK);
+        this.mediaPlayer.setWakeMode(this.context, PowerManager.PARTIAL_WAKE_LOCK);
 
         this.mediaPlayer.setOnCompletionListener(this);
         this.mediaPlayer.setOnPreparedListener(this);
-        this.mediaPlayer.setOnBufferingUpdateListener(this);
         this.mediaPlayer.setOnErrorListener(this);
     }
 
@@ -472,13 +558,13 @@ public class MusicService extends Service implements
             return;
         }
 
-        Random ran = new Random();
         if(this.shuffledPositions == null) {
             this.shuffledPositions = new ArrayList<>();
             for(int index = 0; index < this.playlist.size(); index++) {
                 this.shuffledPositions.add(index);
             }
         }
+        Random ran = new Random();
         Collections.shuffle(this.shuffledPositions,ran);
     }
 }

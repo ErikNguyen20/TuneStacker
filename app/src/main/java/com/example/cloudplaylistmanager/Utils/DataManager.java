@@ -21,6 +21,7 @@ import com.androidnetworking.common.ANRequest;
 import com.androidnetworking.common.ANResponse;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
+import com.example.cloudplaylistmanager.R;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
@@ -77,6 +78,7 @@ public class DataManager {
 
     private String dataLastUpdated;
     private HashMap<String, Bitmap> bitmapCache;                //String is the audio name
+    private HashMap<String, Integer> lengthCache;               //String is the audio name
     private HashMap<String, PlaylistInfo> nestedPlaylistData;   //key is UUID
     private HashMap<String, PlaylistInfo> importedPlaylistData; //key is UUID
     private SettingsHolder settings;
@@ -101,6 +103,7 @@ public class DataManager {
             this.dataLastUpdated = UUID.randomUUID().toString();
             this.sharedPreferences = context.getSharedPreferences(LOG_TAG,Context.MODE_PRIVATE);
             this.bitmapCache = new HashMap<>();
+            this.lengthCache = new HashMap<>();
 
             //Loads saved data
             LoadSettingsData();
@@ -1254,6 +1257,27 @@ public class DataManager {
     }
 
     /**
+     * Gets the duration of the audio in milliseconds
+     * @param audio Audio source.
+     * @return milliseconds length. -1 if failed.
+     */
+    public int GetAudioDuration(PlaybackAudioInfo audio) {
+        if(this.lengthCache.containsKey(audio.getTitle())) {
+            return this.lengthCache.get(audio.getTitle());
+        }
+        //Retrieves the audio length.
+        try{
+            MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+            retriever.setDataSource(audio.getAudioSource());
+            int duration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
+            this.lengthCache.put(audio.getTitle(), duration);
+            return duration;
+        } catch(Exception ignore) {}
+
+        return -1;
+    }
+
+    /**
      * Gets the Bitmap of the thumbnail of the audio.
      * @param audio Audio source.
      * @return Mime Type, returns null if it doesn't exist.
@@ -1262,14 +1286,12 @@ public class DataManager {
         if(this.bitmapCache.containsKey(audio.getTitle())) {
             return this.bitmapCache.get(audio.getTitle());
         }
+        Bitmap bitmap = null;
+
         if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
             //Gets bitmap from external thumbnail file.
-            Bitmap bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
-            if (bitmap != null) {
-                this.bitmapCache.put(audio.getTitle(), bitmap);
-                return bitmap;
-            }
-            else {
+            bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
+            if(bitmap == null) {
                 try {
                     //Gets bitmap from embedded thumbnail image.
                     MediaMetadataRetriever mmr = new MediaMetadataRetriever();
@@ -1277,15 +1299,17 @@ public class DataManager {
                     byte[] data = mmr.getEmbeddedPicture();
                     if (data != null) {
                         bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
-                        this.bitmapCache.put(audio.getTitle(), bitmap);
-                        return bitmap;
                     }
-                } catch (Exception e) {
-                    return null;
-                }
+                } catch (Exception ignore) {}
             }
         }
-        return null;
+        //If all other methods of getting the bitmap failed, get the default.
+        if(bitmap == null) {
+            bitmap = BitmapFactory.decodeResource(this.context.getResources(), R.drawable.med_res);
+        }
+        this.bitmapCache.put(audio.getTitle(), bitmap);
+
+        return bitmap;
     }
 
     /**
@@ -1297,6 +1321,10 @@ public class DataManager {
      */
     public static String ValidateFileName(String fileName) {
         String valid = fileName.trim(); //Remotes leading and ending spaces.
+        //Limits character length to 250 characters.
+        if(valid.length() > 250) {
+            valid = valid.substring(0,250);
+        }
 
         //Remove all control characters + DELETE(U+007F)
         valid = valid.replaceAll("[\\x{0000}-\\x{001F}\\x{007F}]","");

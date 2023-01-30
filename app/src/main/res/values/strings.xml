@@ -23,6 +23,7 @@
     <string name="sync_option_text">Sync</string>
     <string name="backup_option_text">Backup</string>
     <string name="rename_option_text">Rename</string>
+    <string name="play_option_text">Play</string>
     <string name="playlist_view_allsongs">All Songs</string>
     <string name="playlist_view_imports">Imports</string>
     <string name="playlist_view_playall">&#032;Play All</string>
@@ -49,6 +50,11 @@
     <string name="settings_output_extension">Output File Extension</string>
     <string name="settings_export_title">Export</string>
     <string name="settings_data_title">Data</string>
+
+    <string name="notification_label_play">Play</string>
+    <string name="notification_label_pause">Pause</string>
+    <string name="notification_label_next">Next</string>
+    <string name="notification_label_prev">Previous</string>
 
     <string-array name="valid_audio_ext">
         <item>opus</item>

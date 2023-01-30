@@ -22,9 +22,11 @@ import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsListener;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.addExistingPopupSingle.AddExistingPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.playlistviewnested.PlaylistNestedViewModel;
+import com.example.cloudplaylistmanager.ui.playlistviewnormal.PlaylistImportActivity;
 
 import java.util.HashMap;
 
@@ -76,6 +78,18 @@ public class AllSongsFragment extends Fragment {
                     else {
                         Toast.makeText(getActivity(),"Failed to Remove Song.",Toast.LENGTH_SHORT).show();
                     }
+                } else if(itemId == R.id.play_option) {
+                    //Creates a new playlist item.
+                    PlaybackAudioInfo audio = playlist.getAllVideos().get(position);
+                    PlaylistInfo singlePlaylistItem = new PlaylistInfo();
+                    singlePlaylistItem.setTitle(audio.getTitle());
+                    singlePlaylistItem.AddAudioToPlaylist(audio);
+
+                    //Launches Media Player
+                    Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,singlePlaylistItem);
+                    intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
+                    startActivity(intent);
                 }
             }
 

@@ -10,15 +10,22 @@ public class NotificationReceiver extends BroadcastReceiver {
 
     public static final String MEDIA_NOTIFICATION_ACTION = "media_notification_action";
     public static final String MEDIA_NOTIFICATION_ACTION_KEY = "media_notification_key";
+    public static final String ACTION_PLAY = "PLAY";
+    public static final String ACTION_PAUSE = "PAUSE";
+    public static final String ACTION_NEXT = "NEXT";
+    public static final String ACTION_PREV = "PREVIOUS";
+    public static final String ACTION_DELETE = "DELETE";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if(intent.getAction() != null) {
             try {
                 switch (intent.getAction()) {
-                    case ApplicationClass.ACTION_PLAY:
-                    case ApplicationClass.ACTION_NEXT:
-                    case ApplicationClass.ACTION_PREV:
+                    case ACTION_PLAY:
+                    case ACTION_NEXT:
+                    case ACTION_PREV:
+                    case ACTION_PAUSE:
+                    case ACTION_DELETE:
                         //Broadcasts the button actions to the media player.
                         Intent local = new Intent();
                         local.setAction(MEDIA_NOTIFICATION_ACTION);

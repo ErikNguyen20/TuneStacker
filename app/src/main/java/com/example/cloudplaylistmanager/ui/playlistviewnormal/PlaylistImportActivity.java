@@ -168,6 +168,18 @@ public class PlaylistImportActivity extends AppCompatActivity {
                     else {
                         Toast.makeText(PlaylistImportActivity.this,"Failed to Remove Song.",Toast.LENGTH_SHORT).show();
                     }
+                } else if(itemId == R.id.play_option) {
+                    //Creates a new playlist item.
+                    PlaybackAudioInfo audio = playlistInfo.getAllVideos().get(position);
+                    PlaylistInfo singlePlaylistItem = new PlaylistInfo();
+                    singlePlaylistItem.setTitle(audio.getTitle());
+                    singlePlaylistItem.AddAudioToPlaylist(audio);
+
+                    //Launches Media Player
+                    Intent intent = new Intent(PlaylistImportActivity.this,MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,singlePlaylistItem);
+                    intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
+                    startActivity(intent);
                 }
             }
 

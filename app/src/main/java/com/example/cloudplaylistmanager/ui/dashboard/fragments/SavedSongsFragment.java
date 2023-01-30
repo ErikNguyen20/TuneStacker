@@ -24,6 +24,7 @@ import com.example.cloudplaylistmanager.RecyclerAdapters.RecyclerViewOptionsList
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsOptionsRecyclerAdapter;
 import com.example.cloudplaylistmanager.RecyclerAdapters.SongsRecyclerAdapter;
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 import com.example.cloudplaylistmanager.ui.addNewPopupSingle.AddNewPopupSingleActivity;
 import com.example.cloudplaylistmanager.ui.dashboard.DashboardViewModel;
@@ -92,6 +93,18 @@ public class SavedSongsFragment extends Fragment {
                         }
                         Toast.makeText(getActivity(), "Song Failed to Delete.", Toast.LENGTH_SHORT).show();
                     }
+                } else if(itemId == R.id.play_option) {
+                    //Creates a new playlist item.
+                    PlaybackAudioInfo audio = savedSongs.getAllVideos().get(position);
+                    PlaylistInfo singlePlaylistItem = new PlaylistInfo();
+                    singlePlaylistItem.setTitle(audio.getTitle());
+                    singlePlaylistItem.AddAudioToPlaylist(audio);
+
+                    //Launches Media Player
+                    Intent intent = new Intent(getActivity(),MediaPlayerActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                    intent.putExtra(MediaPlayerActivity.SERIALIZE_TAG,singlePlaylistItem);
+                    intent.putExtra(MediaPlayerActivity.POSITION_TAG,position);
+                    startActivity(intent);
                 }
             }
 

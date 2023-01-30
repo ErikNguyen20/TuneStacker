@@ -5,13 +5,13 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
 
     <application
-        android:name=".MusicPlayer.ApplicationClass"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -52,16 +52,11 @@
             android:screenOrientation="portrait"/>
 
         <service
-            android:name=".MusicPlayer.MusicService"
+            android:name=".MusicPlayer.MusicBrowserService"
             android:enabled="true"
             android:exported="true"
-            android:label="@string/app_name" />
-
-        <service
-            android:name=".Utils.DownloadService"
-            android:enabled="true"
-            android:exported="true"
-            android:label="@string/app_name" />
+            android:label="@string/app_name">
+        </service>
 
         <receiver
             android:name=".MusicPlayer.NotificationReceiver"
@@ -70,9 +65,17 @@
             <intent-filter>
                 <action android:name="PREVIOUS" />
                 <action android:name="PLAY" />
+                <action android:name="PAUSE" />
                 <action android:name="NEXT" />
+                <action android:name="DELETE" />
             </intent-filter>
         </receiver>
+
+        <service
+            android:name=".Utils.DownloadService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="@string/app_name" />
 
         <activity
             android:name=".MainActivity"
