@@ -173,6 +173,7 @@ public class MusicBrowserService extends Service {
                 if(intent == null) {
                     return;
                 }
+                Log.e(LOG_TAG,"Action Called");
                 switch(intent.getStringExtra(NotificationReceiver.MEDIA_NOTIFICATION_ACTION_KEY)) {
                     case NotificationReceiver.ACTION_PLAY:
                         callback.onPlay();
@@ -187,6 +188,7 @@ public class MusicBrowserService extends Service {
                         callback.onSkipToPrevious();
                         break;
                     case NotificationReceiver.ACTION_DELETE:
+                        Log.e(LOG_TAG,"Action Delete Called");
                         stopSelf();
                         break;
                 }
@@ -297,9 +299,10 @@ public class MusicBrowserService extends Service {
             }
 
             session.setMetadata(new MediaMetadataCompat.Builder()
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
-                            DataManager.getInstance().GetAudioDuration(playback.GetAudioInfo()))
-                    .build());
+                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, playback.GetAudioInfo().getTitle())
+                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                                DataManager.getInstance().GetAudioDuration(playback.GetAudioInfo()))
+                        .build());
 
             onUpdatePlaybackState();
 

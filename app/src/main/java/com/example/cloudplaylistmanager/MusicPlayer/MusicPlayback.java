@@ -536,7 +536,7 @@ public class MusicPlayback implements
      */
     private void NewMediaPlayer() {
         if(this.mediaPlayer != null) {
-            if(this.mediaPlayer.isPlaying()) {
+            if(this.isInitialized && this.mediaPlayer.isPlaying()) {
                 this.mediaPlayer.stop();
             }
             this.mediaPlayer.release();

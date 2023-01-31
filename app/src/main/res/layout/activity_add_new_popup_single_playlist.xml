@@ -9,7 +9,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
+        android:background="?attr/colorPopupBackground"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="10dp"
