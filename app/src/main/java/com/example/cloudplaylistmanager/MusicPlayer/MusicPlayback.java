@@ -480,7 +480,7 @@ public class MusicPlayback implements
     public void onAudioFocusChange(int focusChange) {
         switch(focusChange) {
             case AudioManager.AUDIOFOCUS_LOSS:
-                try{ Stop(); } catch(Exception ignore) {}
+                try{ Pause(); } catch(Exception ignore) {}
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 Pause();

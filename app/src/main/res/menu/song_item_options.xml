@@ -4,7 +4,6 @@
     <item
         android:id="@+id/play_option"
         android:title="@string/play_option_text"/>
-
     <item
         android:id="@+id/export_option"
         android:title="@string/export_option_text"

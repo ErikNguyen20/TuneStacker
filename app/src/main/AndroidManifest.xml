@@ -73,7 +73,7 @@
         </receiver>
 
         <service
-            android:name=".Utils.DownloadService"
+            android:name=".Downloader.DownloadService"
             android:enabled="true"
             android:exported="true"
             android:label="@string/app_name" />

@@ -1,4 +1,4 @@
-package com.example.cloudplaylistmanager.Utils;
+package com.example.cloudplaylistmanager.Downloader;
 
 import android.app.Service;
 import android.content.Context;
@@ -10,10 +10,16 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 
+import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
+import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
+
 
 /**
  * Preforms download operations on a service.
  * Extends {@link Service}.
+ * TODO: Make it a foreground service (implies implementing notification)
  */
 public class DownloadService extends Service {
     private static final String LOG_TAG = "DownloadService";

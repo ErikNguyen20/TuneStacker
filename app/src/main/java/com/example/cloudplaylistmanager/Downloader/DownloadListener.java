@@ -1,4 +1,6 @@
-package com.example.cloudplaylistmanager.Utils;
+package com.example.cloudplaylistmanager.Downloader;
+
+import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 
 public interface DownloadListener {
     void onComplete(PlaybackAudioInfo audio);

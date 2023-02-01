@@ -8,6 +8,7 @@ import android.graphics.BitmapFactory;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaScannerConnection;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
 import android.provider.OpenableColumns;
 import android.util.Log;
@@ -21,6 +22,7 @@ import com.androidnetworking.common.ANRequest;
 import com.androidnetworking.common.ANResponse;
 import com.androidnetworking.common.Priority;
 import com.androidnetworking.error.ANError;
+import com.example.cloudplaylistmanager.Downloader.DownloadListener;
 import com.example.cloudplaylistmanager.R;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -42,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -766,7 +769,8 @@ public class DataManager {
 
 
             //Updates the thumbnail source and type. Will also download the thumbnail.
-            if(audio.getThumbnailSource() != null && this.settings.downloadThumbnail) {
+            if((audio.getThumbnailSource() != null || !audio.getThumbnailSource().isEmpty()) &&
+                    this.settings.downloadThumbnail) {
                 File searchFile = DoesFileExistWithName(this.appImageDirectory,audio.getTitle(),null);
                 if(searchFile == null) {
                     File newThumbnail = DownloadToLocalStorage(audio.getThumbnailSource(), this.appImageDirectory, audio.getTitle() + ".bin");
@@ -812,7 +816,12 @@ public class DataManager {
         try{
             //Writes bytes from the input stream into the output stream.
             inputStream = this.context.getContentResolver().openInputStream(from);
-            outputStream = new FileOutputStream(fileDestination);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                outputStream = Files.newOutputStream(fileDestination.toPath());
+            }
+            else {
+                outputStream = new FileOutputStream(fileDestination);
+            }
 
             byte[] byteArrayBuffer = new byte[1024];
             int length;
@@ -910,8 +919,15 @@ public class DataManager {
             }
 
             //Writes bytes from the input stream into the output stream.
-            audioInputStream = new FileInputStream(audioFile);
-            audioOutputStream = new FileOutputStream(fileDestination);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioInputStream = Files.newInputStream(audioFile.toPath());
+                audioOutputStream = Files.newOutputStream(fileDestination.toPath());
+            }
+            else {
+                audioInputStream = new FileInputStream(audioFile);
+                audioOutputStream = new FileOutputStream(fileDestination);
+            }
+
 
             byte[] byteArrayBuffer = new byte[1024];
             int length;
@@ -1263,7 +1279,13 @@ public class DataManager {
      */
     public int GetAudioDuration(PlaybackAudioInfo audio) {
         if(this.lengthCache.containsKey(audio.getTitle())) {
-            return this.lengthCache.get(audio.getTitle());
+            Integer length = this.lengthCache.get(audio.getTitle());
+            if(length == null) {
+                return -1;
+            }
+            else {
+                return length;
+            }
         }
         //Retrieves the audio length.
         try{
@@ -1271,6 +1293,7 @@ public class DataManager {
             retriever.setDataSource(audio.getAudioSource());
             int duration = Integer.parseInt(retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION));
             this.lengthCache.put(audio.getTitle(), duration);
+            retriever.close();
             return duration;
         } catch(Exception ignore) {}
 
@@ -1278,9 +1301,21 @@ public class DataManager {
     }
 
     /**
+     * Gets the Bitmap of the thumbnail of the audio directly from the cache.
+     * @param audio Audio source.
+     * @return Bitmap, returns null if it doesn't exist.
+     */
+    public Bitmap GetThumbnailImageCache(PlaybackAudioInfo audio) {
+        if(this.bitmapCache.containsKey(audio.getTitle())) {
+            return this.bitmapCache.get(audio.getTitle());
+        }
+        return null;
+    }
+
+    /**
      * Gets the Bitmap of the thumbnail of the audio.
      * @param audio Audio source.
-     * @return Mime Type, returns null if it doesn't exist.
+     * @return Bitmap, returns null if it doesn't exist.
      */
     public Bitmap GetThumbnailImage(PlaybackAudioInfo audio) {
         if(this.bitmapCache.containsKey(audio.getTitle())) {
@@ -1290,7 +1325,7 @@ public class DataManager {
 
         if(audio.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
             //Gets bitmap from external thumbnail file.
-            bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource());
+            try { bitmap = BitmapFactory.decodeFile(audio.getThumbnailSource()); } catch(Exception ignore) {}
             if(bitmap == null) {
                 try {
                     //Gets bitmap from embedded thumbnail image.
@@ -1300,6 +1335,7 @@ public class DataManager {
                     if (data != null) {
                         bitmap = BitmapFactory.decodeByteArray(data, 0, data.length);
                     }
+                    mmr.close();
                 } catch (Exception ignore) {}
             }
         }

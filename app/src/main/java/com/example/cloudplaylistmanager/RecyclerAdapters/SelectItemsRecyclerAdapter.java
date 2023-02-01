@@ -3,6 +3,7 @@ package com.example.cloudplaylistmanager.RecyclerAdapters;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +20,7 @@ import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 /**
@@ -103,12 +105,14 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
                 return;
             }
             PlaybackAudioInfo sourceAudio = playlistInfo.first.getAllVideos().iterator().next();
-            Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(sourceAudio);
-            if(bitmap != null) {
-                viewHolder.icon.setImageBitmap(bitmap);
+            Bitmap exist = DataManager.getInstance().GetThumbnailImageCache(sourceAudio);
+            if(exist != null) {
+                viewHolder.icon.setImageBitmap(exist);
             }
             else {
                 viewHolder.icon.setImageResource(R.drawable.med_res);
+                SelectItemsRecyclerAdapter.AsyncBitmapRequest request = new SelectItemsRecyclerAdapter.AsyncBitmapRequest(viewHolder.icon);
+                request.execute(sourceAudio);
             }
         }
         else {
@@ -127,14 +131,15 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
             viewHolder.title.setText(audioInfo.first.getTitle());
 
             //Sets the icon of the audio item.
-            if(audioInfo.first.getThumbnailType() == PlaybackAudioInfo.PlaybackMediaType.LOCAL) {
-                Bitmap bitmap = BitmapFactory.decodeFile(audioInfo.first.getThumbnailSource());
-                if (bitmap != null) {
-                    viewHolder.icon.setImageBitmap(bitmap);
-                    return;
-                }
+            Bitmap exist = DataManager.getInstance().GetThumbnailImageCache(audioInfo.first);
+            if(exist != null) {
+                viewHolder.icon.setImageBitmap(exist);
             }
-            viewHolder.icon.setImageResource(R.drawable.med_res);
+            else {
+                viewHolder.icon.setImageResource(R.drawable.med_res);
+                SelectItemsRecyclerAdapter.AsyncBitmapRequest request = new SelectItemsRecyclerAdapter.AsyncBitmapRequest(viewHolder.icon);
+                request.execute(audioInfo.first);
+            }
         }
     }
 
@@ -218,4 +223,32 @@ public class SelectItemsRecyclerAdapter extends RecyclerView.Adapter<RecyclerVie
             });
         }
     }
+
+    /**
+     * AsyncTask class that asynchronously processes/fetches the bitmap of an audio.
+     * Extends {@link AsyncTask}
+     */
+    private static class AsyncBitmapRequest extends AsyncTask<PlaybackAudioInfo, Integer, Bitmap> {
+        private final WeakReference<ImageView> viewReference;
+
+        public AsyncBitmapRequest(ImageView view) {
+            this.viewReference = new WeakReference<>(view);
+        }
+
+        @Override
+        protected Bitmap doInBackground(PlaybackAudioInfo... params) {
+            PlaybackAudioInfo audio = params[0];
+            return DataManager.getInstance().GetThumbnailImage(audio);
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            if(this.viewReference.get() != null && bitmap != null) {
+                ImageView view = this.viewReference.get();
+                view.setImageBitmap(bitmap);
+            }
+        }
+    }
 }
+
+

@@ -29,8 +29,8 @@ import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.R;
 import com.example.cloudplaylistmanager.Utils.DataManager;
-import com.example.cloudplaylistmanager.Utils.DownloadListener;
-import com.example.cloudplaylistmanager.Utils.DownloadService;
+import com.example.cloudplaylistmanager.Downloader.DownloadListener;
+import com.example.cloudplaylistmanager.Downloader.DownloadService;
 import com.example.cloudplaylistmanager.Utils.PlatformCompatUtility;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 

@@ -2,6 +2,8 @@ package com.example.cloudplaylistmanager.Utils;
 
 import android.util.Log;
 
+import com.example.cloudplaylistmanager.Downloader.DownloadListener;
+import com.example.cloudplaylistmanager.Downloader.DownloadPlaylistListener;
 import com.example.cloudplaylistmanager.Platforms.YoutubeUtilities;
 
 import java.util.ArrayList;

@@ -2,6 +2,7 @@ package com.example.cloudplaylistmanager.RecyclerAdapters;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.os.AsyncTask;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +17,7 @@ import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaybackAudioInfo;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 
 /**
@@ -90,12 +92,16 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
             PlaybackAudioInfo audio = this.audios.get(this.addButtonIncluded ? position - 1 : position);
 
             viewHolder.title.setText(audio.getTitle());
-            Bitmap bitmap = DataManager.getInstance().GetThumbnailImage(audio);
-            if(bitmap != null) {
-                viewHolder.icon.setImageBitmap(bitmap);
+
+            //Gets the image of the audio.
+            Bitmap exist = DataManager.getInstance().GetThumbnailImageCache(audio);
+            if(exist != null) {
+                viewHolder.icon.setImageBitmap(exist);
             }
             else {
                 viewHolder.icon.setImageResource(R.drawable.med_res);
+                AsyncBitmapRequest request = new AsyncBitmapRequest(viewHolder.icon);
+                request.execute(audio);
             }
         }
     }
@@ -188,6 +194,32 @@ public class SongsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.View
                     ViewHolderClicked(getItemViewType(), getLayoutPosition());
                 }
             });
+        }
+    }
+
+    /**
+     * AsyncTask class that asynchronously processes/fetches the bitmap of an audio.
+     * Extends {@link AsyncTask}
+     */
+    private static class AsyncBitmapRequest extends AsyncTask<PlaybackAudioInfo, Integer, Bitmap> {
+        private final WeakReference<ImageView> viewReference;
+
+        public AsyncBitmapRequest(ImageView view) {
+            this.viewReference = new WeakReference<>(view);
+        }
+
+        @Override
+        protected Bitmap doInBackground(PlaybackAudioInfo... params) {
+            PlaybackAudioInfo audio = params[0];
+            return DataManager.getInstance().GetThumbnailImage(audio);
+        }
+
+        @Override
+        protected void onPostExecute(Bitmap bitmap) {
+            if(this.viewReference.get() != null && bitmap != null) {
+                ImageView view = this.viewReference.get();
+                view.setImageBitmap(bitmap);
+            }
         }
     }
 }
