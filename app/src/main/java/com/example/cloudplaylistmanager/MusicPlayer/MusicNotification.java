@@ -44,22 +44,22 @@ public class MusicNotification {
         this.playAction = new NotificationCompat.Action(
                 R.drawable.ic_baseline_play_circle_outline_24,
                 this.musicService.getString(R.string.notification_label_play),
-                CreateActionIntent(NotificationReceiver.ACTION_PLAY, PendingIntent.FLAG_UPDATE_CURRENT));
+                CreateActionIntent(NotificationReceiver.ACTION_PLAY));
 
         this.pauseAction = new NotificationCompat.Action(
                 R.drawable.ic_baseline_pause_circle_outline_24,
                 this.musicService.getString(R.string.notification_label_pause),
-                CreateActionIntent(NotificationReceiver.ACTION_PAUSE, PendingIntent.FLAG_UPDATE_CURRENT));
+                CreateActionIntent(NotificationReceiver.ACTION_PAUSE));
 
         this.nextAction = new NotificationCompat.Action(
                 R.drawable.ic_baseline_skip_next_24,
                 this.musicService.getString(R.string.notification_label_next),
-                CreateActionIntent(NotificationReceiver.ACTION_NEXT, PendingIntent.FLAG_UPDATE_CURRENT));
+                CreateActionIntent(NotificationReceiver.ACTION_NEXT));
 
         this.prevAction = new NotificationCompat.Action(
                 R.drawable.ic_baseline_skip_previous_24,
                 this.musicService.getString(R.string.notification_label_prev),
-                CreateActionIntent(NotificationReceiver.ACTION_PREV, PendingIntent.FLAG_UPDATE_CURRENT));
+                CreateActionIntent(NotificationReceiver.ACTION_PREV));
 
         this.notificationManager.cancelAll();
     }
@@ -112,9 +112,8 @@ public class MusicNotification {
                 .setContentTitle(audio.getTitle())
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(CreateContentIntent())
+                .setDeleteIntent(CreateActionIntent(NotificationReceiver.ACTION_DELETE))
                 .setLargeIcon(DataManager.getInstance().GetThumbnailImage(audio));
-
-        builder.setDeleteIntent(CreateActionIntent(NotificationReceiver.ACTION_DELETE, PendingIntent.FLAG_CANCEL_CURRENT));
 
         //Sets button actions.
         builder.addAction(this.prevAction);
@@ -150,13 +149,13 @@ public class MusicNotification {
      * @param ACTION String ACTION
      * @return New Pending Intent
      */
-    private PendingIntent CreateActionIntent(String ACTION, final int flag) {
+    private PendingIntent CreateActionIntent(String ACTION) {
         Intent intent = new Intent(this.musicService, NotificationReceiver.class).setAction(ACTION);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return PendingIntent.getBroadcast(this.musicService, ACTION_REQUEST_CODE, intent,PendingIntent.FLAG_IMMUTABLE | flag);
+            return PendingIntent.getBroadcast(this.musicService, ACTION_REQUEST_CODE, intent,PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         }
         else {
-            return PendingIntent.getBroadcast(this.musicService, ACTION_REQUEST_CODE, intent, flag);
+            return PendingIntent.getBroadcast(this.musicService, ACTION_REQUEST_CODE, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         }
     }
 

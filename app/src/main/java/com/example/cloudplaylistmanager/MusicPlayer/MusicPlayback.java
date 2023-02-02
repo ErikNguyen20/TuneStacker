@@ -139,20 +139,18 @@ public class MusicPlayback implements
      * Pauses the Music Player.
      */
     public void Pause() {
-        if(!this.isInitialized || this.isPaused) {
+        if(!this.isInitialized || this.isPaused || !this.mediaPlayer.isPlaying()) {
             return;
         }
 
+        this.mediaPlayer.pause();
         this.isPaused = true;
+        StopAudioFocus();
+        UnRegisterAudioNoisyReceiver();
+
         if(this.onUpdatePlayerListener != null) {
             this.onUpdatePlayerListener.onPauseUpdate(true);
         }
-
-        if(this.mediaPlayer.isPlaying()) {
-            this.mediaPlayer.pause();
-        }
-        StopAudioFocus();
-        UnRegisterAudioNoisyReceiver();
     }
 
     /**
