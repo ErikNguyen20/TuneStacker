@@ -234,6 +234,9 @@ public class MediaPlayerActivity extends AppCompatActivity {
             }
 
             @Override
+            public void onSeekChange(int pos) {}
+
+            @Override
             public void onShuffleUpdate(boolean isShuffled) {
                 if(isShuffled) {
                     ImageViewCompat.setImageTintList(mediaPlayerShuffle, ColorStateList.valueOf(FetchColor(R.attr.colorPrimary)));

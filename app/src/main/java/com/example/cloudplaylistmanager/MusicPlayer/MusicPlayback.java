@@ -182,6 +182,10 @@ public class MusicPlayback implements
             pos = 0;
         }
         this.mediaPlayer.seekTo(pos);
+        
+        if(this.onUpdatePlayerListener != null) {
+            this.onUpdatePlayerListener.onSeekChange(pos);
+        }
     }
 
     /**

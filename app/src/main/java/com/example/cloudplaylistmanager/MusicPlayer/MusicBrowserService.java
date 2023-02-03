@@ -365,6 +365,11 @@ public class MusicBrowserService extends Service {
         }
 
         @Override
+        public void onSeekChange(int pos) {
+            onUpdatePlaybackState();
+        }
+
+        @Override
         public void onShuffleUpdate(boolean isShuffled) {
             clientCallback.onShuffleUpdate(isShuffled);
         }
