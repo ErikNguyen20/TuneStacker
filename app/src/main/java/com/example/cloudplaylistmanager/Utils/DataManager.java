@@ -47,6 +47,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -64,6 +65,7 @@ public class DataManager {
     private static final String SAVED_PREFERENCES_NESTED_TAG = "nested";
     private static final String SAVED_PREFERENCES_IMPORT_TAG = "import";
     private static final String SAVED_PREFERENCES_SETTINGS_TAG = "settings";
+    private static final String SAVED_PREFERENCES_UPDATE_TIME_TAG = "updatetime";
     private static final String LOCAL_DIRECTORY_AUDIO_STORAGE = "downloaded-songs";
     private static final String LOCAL_DIRECTORY_IMG_STORAGE = "thumbnails";
     private static final String EXPORT_DIRECTORY_NAME = "tunestacker-exports";
@@ -188,6 +190,16 @@ public class DataManager {
     }
 
     /**
+     * Saves all last update checked time in milliseconds to {@link SharedPreferences}.
+     */
+    public void SaveLastUpdateCheck() {
+        SharedPreferences.Editor editor = this.sharedPreferences.edit();
+
+        editor.putLong(SAVED_PREFERENCES_UPDATE_TIME_TAG, new Date().getTime());
+        editor.apply();
+    }
+
+    /**
      * Clears all data from {@link SharedPreferences}.
      */
     public void ClearAllData() {
@@ -257,6 +269,13 @@ public class DataManager {
         else {
             this.settings = fetchedSettings;
         }
+    }
+
+    /**
+     * Gets the time in milliseconds that the app last checked for update {@link SharedPreferences}.
+     */
+    public long GetLastUpdateTime() {
+        return this.sharedPreferences.getLong(SAVED_PREFERENCES_UPDATE_TIME_TAG, 0);
     }
 
     /**

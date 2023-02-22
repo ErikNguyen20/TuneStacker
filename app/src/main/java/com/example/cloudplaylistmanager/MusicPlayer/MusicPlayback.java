@@ -182,7 +182,7 @@ public class MusicPlayback implements
             pos = 0;
         }
         this.mediaPlayer.seekTo(pos);
-        
+
         if(this.onUpdatePlayerListener != null) {
             this.onUpdatePlayerListener.onSeekChange(pos);
         }
@@ -457,6 +457,7 @@ public class MusicPlayback implements
         if(android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             AudioAttributes attrs = new AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .setUsage(AudioAttributes.USAGE_MEDIA)
                 .build();
             AudioFocusRequest audioFocusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setOnAudioFocusChangeListener(this)

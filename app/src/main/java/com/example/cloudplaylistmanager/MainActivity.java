@@ -9,9 +9,11 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import android.Manifest;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -20,9 +22,17 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.example.cloudplaylistmanager.Utils.DataManager;
+import com.yausername.youtubedl_android.YoutubeDL;
+import com.yausername.youtubedl_android.YoutubeDLException;
+
+import java.lang.ref.WeakReference;
+import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String LOG_TAG = "MainActivity";
     private static final int STORAGE_PERMISSION_CODE = 100;
+    private static final long UPDATE_CHECK_COOLDOWN_MILLISECONDS = 1000 * 60 * 60 * 24 * 2;
+                                                                //millisec*sec*min*hour*day
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +67,15 @@ public class MainActivity extends AppCompatActivity {
         DataManager.Initialize(getApplicationContext());
         DataManager.getInstance().ConstructPlaylistFromLocalFiles();
 
-        startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        long last = DataManager.getInstance().GetLastUpdateTime();
+        long current = new Date().getTime();
+        if(current - last >= UPDATE_CHECK_COOLDOWN_MILLISECONDS) {
+            MainActivity.AsyncYoutubeDlUpdater request = new AsyncYoutubeDlUpdater(this);
+            request.execute();
+        }
+        else {
+            startActivity(new Intent(MainActivity.this,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
+        }
     }
 
     @Override
@@ -136,6 +154,70 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("Permissions", "Storage Permission Denied");
                     Toast.makeText(getApplicationContext(),"Please enable Storage Permissions to use this application.",Toast.LENGTH_LONG).show();
                 }
+            }
+        }
+    }
+
+    /**
+     * AsyncTask class that asynchronously checks/updates the yt-dlp binary.
+     * Extends {@link AsyncTask}
+     */
+    private static class AsyncYoutubeDlUpdater extends AsyncTask<Boolean, Integer, Integer>
+    {
+        WeakReference<MainActivity> activity;
+        WeakReference<ProgressDialog> progress;
+
+        // Important: DataManager must be initialized first
+        public AsyncYoutubeDlUpdater(MainActivity activity)
+        {
+            this.activity = new WeakReference<>(activity);
+
+            ProgressDialog dialog = new ProgressDialog(activity);
+            dialog.setTitle("Checking for Update");
+            dialog.setMessage("If this is taking while, then an update is being downloaded...");
+            this.progress = new WeakReference<>(dialog);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            if(this.activity.get() != null && this.progress.get() != null) {
+                this.progress.get().show();
+            }
+        }
+
+        @Override
+        protected Integer doInBackground(Boolean... booleans) {
+            try {
+                YoutubeDL.UpdateStatus status = YoutubeDL.getInstance().updateYoutubeDL(activity.get());
+                if(status == YoutubeDL.UpdateStatus.DONE) {
+                    return 1;
+                }
+                else {
+                    return 0;
+                }
+            } catch (YoutubeDLException e) {
+                Log.e(LOG_TAG, "Failed to update YoutubeDL");
+                return -1;
+            }
+        }
+
+        @Override
+        protected void onPostExecute(Integer status) {
+            if(this.activity.get() != null) {
+                MainActivity context = this.activity.get();
+                if(this.progress.get() != null) {
+                    this.progress.get().dismiss();
+                }
+
+                if(status == 1) {
+                    Toast.makeText(context.getApplicationContext(),"Yt-Dlp Update Downloaded.", Toast.LENGTH_LONG).show();
+                }
+                // Updates last update check so it won't do it again for a certain time-span
+                if(status != -1) {
+                    DataManager.getInstance().SaveLastUpdateCheck();
+                }
+
+                context.startActivity(new Intent(context,LandingActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP));
             }
         }
     }
