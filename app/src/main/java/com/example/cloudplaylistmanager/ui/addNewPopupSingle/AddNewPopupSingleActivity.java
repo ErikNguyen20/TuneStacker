@@ -147,7 +147,7 @@ public class AddNewPopupSingleActivity extends AppCompatActivity {
                 public void onClick(View view) {
                     if(GetConnectivityStatus() == ConnectivityManager.TYPE_MOBILE) {
                         //If the device is using mobile data, then prompt the user with a popup.
-                        Dialog dialog = new Dialog(getApplicationContext());
+                        Dialog dialog = new Dialog(AddNewPopupSingleActivity.this);
                         dialog.setContentView(R.layout.popup_confirm_button);
 
                         TextView continueButton = dialog.findViewById(R.id.textView_continue_button);

@@ -31,7 +31,7 @@ import java.util.Date;
 public class MainActivity extends AppCompatActivity {
     private static final String LOG_TAG = "MainActivity";
     private static final int STORAGE_PERMISSION_CODE = 100;
-    private static final long UPDATE_CHECK_COOLDOWN_MILLISECONDS = 1000 * 60 * 60 * 24 * 2;
+    private static final long UPDATE_CHECK_COOLDOWN_MILLISECONDS = 1000 * 60 * 60 * 24 * 3;
                                                                 //millisec*sec*min*hour*day
 
     @Override

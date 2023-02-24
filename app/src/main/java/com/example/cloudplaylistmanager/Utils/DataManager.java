@@ -1007,7 +1007,9 @@ public class DataManager {
             if(thumbFile != null && thumbFile.exists()) {
                 thumbFile.delete();
             }
-            return audioFile.delete();
+            boolean deleteSuccess = audioFile.delete();
+            this.dataLastUpdated = UUID.randomUUID().toString();
+            return deleteSuccess;
         }
         return false;
     }
