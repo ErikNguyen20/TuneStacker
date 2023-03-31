@@ -257,6 +257,7 @@ public class MediaPlayerActivity extends AppCompatActivity {
             @Override
             public void onSongChange(PlaybackAudioInfo audio, int position) {
                 mediaPlayerTitle.setText(audio.getTitle());
+                mediaPlayerTitle.setSelected(true);
                 mediaPlayerIcon.setImageBitmap(GetMediaPlayerIcon(audio));
 
                 if(songRecyclerView != null && songRecyclerView.getLayoutManager() != null) {

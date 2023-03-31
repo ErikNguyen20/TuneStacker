@@ -10,6 +10,7 @@ import com.example.cloudplaylistmanager.Utils.DataManager;
 import com.example.cloudplaylistmanager.Utils.PlaylistInfo;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class DashboardViewModel extends ViewModel {
 

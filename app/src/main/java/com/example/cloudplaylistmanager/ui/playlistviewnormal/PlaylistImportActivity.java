@@ -137,8 +137,10 @@ public class PlaylistImportActivity extends AppCompatActivity {
             public void onClick(View view) {
                 //Sends the user to the original playlist URL
                 String url = source.getText().toString();
-                Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(url));
-                startActivity(intent);
+                if(url.length() > 0) {
+                    Intent intent = new Intent(Intent.ACTION_VIEW).setData(Uri.parse(url));
+                    startActivity(intent);
+                }
             }
         });
 

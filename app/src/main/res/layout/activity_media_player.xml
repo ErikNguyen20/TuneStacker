@@ -38,10 +38,12 @@
                 android:layout_margin="12dp"
                 android:textAlignment="center"
                 android:textSize="20sp"
-                android:maxLines="1"
-                android:ellipsize="end"
+                android:ellipsize="marquee"
+                android:scrollHorizontally="true"
+                android:marqueeRepeatLimit="marquee_forever"
                 android:textColor="?attr/colorSecondary"
-                android:textStyle="bold" />
+                android:textStyle="bold"
+                android:singleLine="true" />
 
             <SeekBar
                 android:id="@+id/seekBar_mediaPlayer"

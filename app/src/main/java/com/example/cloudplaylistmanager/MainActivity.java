@@ -1,5 +1,6 @@
 package com.example.cloudplaylistmanager;
 
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -69,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
         long last = DataManager.getInstance().GetLastUpdateTime();
         long current = new Date().getTime();
-        if(current - last >= UPDATE_CHECK_COOLDOWN_MILLISECONDS) {
+        if(Math.abs(current - last) >= UPDATE_CHECK_COOLDOWN_MILLISECONDS) {
             MainActivity.AsyncYoutubeDlUpdater request = new AsyncYoutubeDlUpdater(this);
             request.execute();
         }

@@ -47,6 +47,7 @@ import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1107,6 +1108,8 @@ public class DataManager {
             return null;
         }
         PlaylistInfo playlistInfo = new PlaylistInfo();
+        ArrayList<Pair<String, Long>> timestamps = new ArrayList<>();
+        HashMap<String, Integer> orderMapping = new HashMap<>();
         playlistInfo.setTitle("Saved Songs");
 
         //Iterates through all of the files and constructs an PlaybackAudioInfo class based on the data.
@@ -1125,7 +1128,20 @@ public class DataManager {
             audio.setAudioType(PlaybackAudioInfo.PlaybackMediaType.LOCAL);
             audio.setOrigin(PlaybackAudioInfo.ORIGIN_UPLOAD);
             playlistInfo.AddAudioToPlaylist(audio);
+            timestamps.add(new Pair<>(title, file.lastModified()));
         }
+
+        // Sorts each audio by last modified (Largest to Smallest)
+        Collections.sort(timestamps, new Comparator<Pair<String, Long>>() {
+            @Override
+            public int compare(Pair<String, Long> pairLeft, Pair<String, Long> pairRight) {
+                return Long.compare(pairRight.second, pairLeft.second);
+            }
+        });
+        for(int index = 0; index < timestamps.size(); index++) {
+            orderMapping.put(timestamps.get(index).first, index);
+        }
+        playlistInfo.SetItemsOrder(orderMapping);
 
         this.lastConstructedLocalPlaylist = this.dataLastUpdated;
         this.constructedLocalDataPlaylist = playlistInfo;
@@ -1364,9 +1380,25 @@ public class DataManager {
         if(bitmap == null) {
             bitmap = BitmapFactory.decodeResource(this.context.getResources(), R.drawable.med_res);
         }
+        bitmap = ScaleToFitBitmap(bitmap);
         this.bitmapCache.put(audio.getTitle(), bitmap);
 
         return bitmap;
+    }
+
+    /**
+     * Crops the bitmap to be square.
+     * @param image Bitmap source.
+     * @return Cropped Bitmap.
+     */
+    public static Bitmap ScaleToFitBitmap(Bitmap image) {
+        int desWidth = Math.min(image.getWidth(), image.getHeight());
+        if(image.getWidth() > image.getHeight()) {
+            return Bitmap.createBitmap(image, (image.getWidth() - desWidth) / 2, 0, desWidth, desWidth);
+        }
+        else {
+            return Bitmap.createBitmap(image, 0, (image.getHeight() - desWidth) / 2, desWidth, desWidth);
+        }
     }
 
     /**
