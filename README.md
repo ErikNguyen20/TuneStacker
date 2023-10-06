@@ -5,10 +5,6 @@ A Java Android Music Downloader and Player Application.
 
 <br/>
 
-This app's primary functionality stems from [youtubedl-android](https://github.com/yausername/youtubedl-android) by [yausername](https://github.com/yausername).
-
-<br/>
-
 **Supported Sites:**
 
 [List of supported Urls](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md)
@@ -53,8 +49,11 @@ After obtaining the key(s), they must be set in your project root's `local.prope
 YT_API_KEY=<insert>
 ```
 
-<br/>
- 
-Disclaimer
-----
-Download links from Spotify are currently not working, but compatability is planned in the upcoming future.
+## Acknowledgments
+
+This app's primary functionality stems from [youtubedl-android](https://github.com/yausername/youtubedl-android) by [yausername](https://github.com/yausername).
+
+## License
+
+This program is licensed under the [MIT License](https://github.com/ErikNguyen20/TuneStacker/blob/main/LICENSE)
+
