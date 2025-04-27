@@ -1,4 +1,6 @@
 # TuneStacker 🎶
+> **⚠️ This repository is now archived. A new version is available here: [TuneStacker2](https://github.com/ErikNguyen20/TuneStacker2?tab=readme-ov-file).**
+
 A Java Android Music Downloader and Player Application.
 
 *This app was made as a personal project of mine.*
